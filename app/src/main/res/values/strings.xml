@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">RCBD Automação</string>
+
+    <string name="accessibility_service_description">
+        Serviço para automatizar ações de envio.
+    </string>
+
+</resources>

@@ -68,120 +68,133 @@ public class RCBDAccessibilityService extends AccessibilityService {
 
 
     private void controlarUSSD(
-            String texto,
-            AccessibilityNodeInfo root
-    ){
+        String texto,
+        AccessibilityNodeInfo root
+){
 
 
-        if(etapa == 0){
+    if(etapa == 0){
 
 
-            enviarTexto(root,"8");
+        esperarEnviar(
+                root,
+                "8"
+        );
 
 
-            etapa = 1;
+        etapa = 1;
 
-
-        }
-
-
-        else if(etapa == 1 &&
-                texto.contains("transfer")){
-
-
-            esperarEnviar(
-                    root,
-                    "2"
-            );
-
-
-            etapa = 2;
-
-
-        }
-
-
-        else if(etapa == 2){
-
-
-            esperarEnviar(
-                    root,
-                    Config.getMB(this)
-            );
-
-
-            etapa = 3;
-
-
-        }
-
-
-        else if(etapa == 3){
-
-
-            esperarEnviar(
-                    root,
-                    Config.getNumero(this)
-            );
-
-
-            etapa = 4;
-
-
-        }
-
-
-        else if(etapa == 4 &&
-                (texto.contains("confirm") ||
-                 texto.contains("sim"))){
-
-
-            esperarEnviar(
-                    root,
-                    "1"
-            );
-
-
-            etapa = 5;
-
-
-        }
 
     }
 
 
+    else if(etapa == 1 &&
+            (texto.contains("menu")
+            || texto.contains("transfer")
+            || texto.contains("opção"))){
+
+
+        esperarEnviar(
+                root,
+                "2"
+        );
+
+
+        etapa = 2;
+
+
+    }
+
+
+    else if(etapa == 2){
+
+
+        esperarEnviar(
+                root,
+                Config.getMB(this)
+        );
+
+
+        etapa = 3;
+
+
+    }
+
+
+    else if(etapa == 3){
+
+
+        esperarEnviar(
+                root,
+                Config.getNumero(this)
+        );
+
+
+        etapa = 4;
+
+
+    }
+
+
+    else if(etapa == 4 &&
+            (texto.contains("confirm")
+            || texto.contains("sim")
+            || texto.contains("enviar"))){
+
+
+        esperarEnviar(
+                root,
+                "1"
+        );
+
+
+        etapa = 5;
+
+
+    }
+
+
+}
 
 
 
     private void esperarEnviar(
-            AccessibilityNodeInfo root,
-            String texto
-    ){
+        AccessibilityNodeInfo root,
+        String texto
+){
+
+
+    handler.postDelayed(() -> {
+
+
+        LogManager.registar(
+                this,
+                "Enviar etapa: " + texto
+        );
+
+
+        enviarTexto(
+                root,
+                texto
+        );
 
 
         handler.postDelayed(() -> {
 
 
-            enviarTexto(
-                    root,
-                    texto
+            clicarBotao(
+                    root
             );
-
-
-            handler.postDelayed(() -> {
-
-
-                clicarBotao(
-                        root
-                );
-
-
-            },1500);
 
 
         },2000);
 
-    }
+
+
+    },3000);
+
+
+}
 
 
 
@@ -267,9 +280,14 @@ public class RCBDAccessibilityService extends AccessibilityService {
 
 
         if(texto.contains("ok") ||
-           texto.contains("enviar") ||
-           texto.contains("confirmar") ||
-           texto.contains("continuar")){
+   texto.contains("enviar") ||
+   texto.contains("confirmar") ||
+   texto.contains("continuar") ||
+   texto.contains("enter") ||
+   texto.contains("aceitar") ||
+   texto.contains("responder") ||
+   texto.contains("sim") ||
+   texto.contains("prosseguir")){
 
 
             node.performAction(

@@ -5,9 +5,13 @@ import android.content.Intent;
 import android.net.Uri;
 import android.widget.Toast;
 
-import org.json.JSONObject;
 
 public class UssdManager {
+
+
+    private static UssdStateMachine maquina =
+            new UssdStateMachine();
+
 
 
     public static void iniciarEnvio(Context context){
@@ -16,17 +20,44 @@ public class UssdManager {
         try{
 
 
-            JSONObject pedido =
-                    QueueManager.pegarProximo(context);
+            org.json.JSONObject pedido =
+        QueueManager.pegarProximo(context);
 
 
+if(pedido == null){
 
-            if(pedido == null){
+    Toast.makeText(
+            context,
+            "Fila vazia",
+            Toast.LENGTH_SHORT
+    ).show();
+
+    return;
+
+}
+
+
+String mb =
+        pedido.getString("mb");
+
+
+String numero =
+        pedido.getString("numero");
+
+
+Config.salvarPedidoAtual(
+        context,
+        mb,
+        numero
+);
+
+
+            if(mb == null || numero == null){
 
 
                 Toast.makeText(
                         context,
-                        "Fila vazia",
+                        "Dados do envio vazios",
                         Toast.LENGTH_SHORT
                 ).show();
 
@@ -36,69 +67,113 @@ public class UssdManager {
             }
 
 
-
-            String mb =
-                    pedido.getString("mb");
-
-
-            String numero =
-                    pedido.getString("numero");
+RCBDAccessibilityService service =
+        RCBDAccessibilityService.getInstancia();
 
 
+if(service != null){
 
-            Config.salvarPedidoAtual(
+    service.resetarEtapa();
+
+}
+
+
+            maquina.iniciar();
+
+
+
+            LogManager.registar(
                     context,
-                    mb,
-                    numero
+                    "Iniciando USSD"
             );
 
 
 
-            RCBDAccessibilityService service =
-                    RCBDAccessibilityService.getInstancia();
-
-
-
-            if(service != null){
-
-                // preparar primeira etapa
-                service.resetarEtapa();
-
-            }
-
-
-
-
-            String ussd =
-                    Uri.encode("*162#");
-
-
-
-            Intent intent =
-                    new Intent(
-                            Intent.ACTION_CALL,
-                            Uri.parse("tel:" + ussd)
-                    );
-
-
-
-            intent.addFlags(
-                    Intent.FLAG_ACTIVITY_NEW_TASK
-            );
-
-
-            context.startActivity(intent);
+            abrirUSSD(context);
 
 
 
         }catch(Exception e){
 
 
-            e.printStackTrace();
+            maquina.erro();
+
+
+            LogManager.registar(
+                    context,
+                    "Erro USSD: "
+                    + e.getMessage()
+            );
 
 
         }
 
+
     }
+
+
+
+
+
+    private static void abrirUSSD(Context context){
+
+
+        String codigo =
+                Uri.encode("*162#");
+
+
+
+        Intent intent =
+                new Intent(
+                        Intent.ACTION_CALL,
+                        Uri.parse(
+                                "tel:"
+                                + codigo
+                        )
+                );
+
+
+
+        intent.addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK
+        );
+
+
+
+        context.startActivity(intent);
+
+
+
+        maquina.proximo();
+
+
+
+    }
+
+
+
+
+
+    public static UssdStateMachine.Estado estadoAtual(){
+
+
+        return maquina.getEstado();
+
+
+    }
+
+
+
+
+
+    public static void avancar(){
+
+
+        maquina.proximo();
+
+
+    }
+
+
 
 }

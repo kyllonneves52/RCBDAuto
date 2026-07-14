@@ -1,35 +1,122 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="20dp">
+    android:layout_height="match_parent">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="RCBDAuto"
-        android:textSize="28sp"
-        android:layout_gravity="center"/>
 
-    <EditText
-        android:id="@+id/mb"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Quantidade MB"
-        android:inputType="number"/>
+        android:orientation="vertical"
+        android:padding="16dp">
 
-    <EditText
-        android:id="@+id/numero"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="Número do cliente"
-        android:inputType="phone"/>
 
-    <Button
-        android:id="@+id/enviar"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Enviar teste"/>
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="RCBDAuto V2"
+            android:textSize="28sp"
+            android:gravity="center"/>
 
-</LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="STATUS"
+            android:textSize="20sp"
+            android:paddingTop="20dp"/>
+
+
+        <TextView
+            android:id="@+id/status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="A verificar..."
+            android:textSize="16sp"/>
+
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="ENVIO TESTE"
+            android:textSize="20sp"
+            android:paddingTop="20dp"/>
+
+
+        <EditText
+            android:id="@+id/mb"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Quantidade MB"
+            android:inputType="number"/>
+
+
+        <EditText
+            android:id="@+id/numero"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Número cliente"
+            android:inputType="phone"/>
+
+
+        <Button
+            android:id="@+id/enviar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="ENVIAR TESTE"/>
+
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="FILA"
+            android:textSize="20sp"
+            android:paddingTop="20dp"/>
+
+
+        <TextView
+            android:id="@+id/fila"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Pedidos: 0"/>
+
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="LOG"
+            android:textSize="20sp"
+            android:paddingTop="20dp"/>
+
+
+        <TextView
+            android:id="@+id/log"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="RCBDAuto iniciado"/>
+
+
+        <Button
+            android:id="@+id/atualizar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="ATUALIZAR ESTADO"/>
+
+
+        <Button
+            android:id="@+id/diagnostico"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="DIAGNÓSTICO"/>
+
+        <Button
+            android:id="@+id/permissoes"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="ABRIR PERMISSÕES"/>
+
+
+    </LinearLayout>
+
+</ScrollView>

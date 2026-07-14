@@ -23,23 +23,47 @@ public class MainActivity extends Activity {
 
         enviar.setOnClickListener(v -> {
 
-            String pacote = mb.getText().toString();
-            String tel = numero.getText().toString();
+            String pacote = mb.getText().toString().trim();
+            String tel = numero.getText().toString().trim();
+
 
             if(pacote.isEmpty() || tel.isEmpty()){
+
                 Toast.makeText(
-                    this,
-                    "Preencha MB e número",
-                    Toast.LENGTH_SHORT
+                        this,
+                        "Preencha MB e número",
+                        Toast.LENGTH_SHORT
                 ).show();
+
                 return;
             }
 
+
+            // Guardar pedido na fila
+            QueueManager.adicionar(
+                    this,
+                    pacote,
+                    tel
+            );
+
+
+            int total = QueueManager.quantidade(this);
+
+
             Toast.makeText(
-                this,
-                "Teste enviado: "+pacote+"MB para "+tel,
-                Toast.LENGTH_LONG
+                    this,
+                    "Pedido guardado: "
+                    + pacote
+                    + "MB para "
+                    + tel
+                    + "\nNa fila: "
+                    + total,
+                    Toast.LENGTH_LONG
             ).show();
+
+
+            mb.setText("");
+            numero.setText("");
 
         });
 

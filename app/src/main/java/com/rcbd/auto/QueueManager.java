@@ -12,69 +12,52 @@ public class QueueManager {
     private static final String KEY = "pedidos";
 
     public static void adicionar(Context context, String mb, String numero) {
-
         try {
             SharedPreferences sp = context.getSharedPreferences(PREF, Context.MODE_PRIVATE);
-
             String dados = sp.getString(KEY, "[]");
-
             JSONArray fila = new JSONArray(dados);
-
             JSONObject pedido = new JSONObject();
-
             pedido.put("mb", mb);
             pedido.put("numero", numero);
             pedido.put("estado", "aguardando");
-
             fila.put(pedido);
-
-            sp.edit()
-                    .putString(KEY, fila.toString())
-                    .apply();
-
+            sp.edit().putString(KEY, fila.toString()).apply();
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-
     public static JSONObject pegarProximo(Context context) {
-
         try {
-
             SharedPreferences sp = context.getSharedPreferences(PREF, Context.MODE_PRIVATE);
-
-            JSONArray fila = new JSONArray(
-                    sp.getString(KEY, "[]")
-            );
-
+            JSONArray fila = new JSONArray(sp.getString(KEY, "[]"));
             if(fila.length() > 0){
                 return fila.getJSONObject(0);
             }
-
         } catch(Exception e){
             e.printStackTrace();
         }
-
         return null;
     }
 
+    public static void removerPrimeiro(Context context){
+        try{
+            SharedPreferences sp = context.getSharedPreferences(PREF, Context.MODE_PRIVATE);
+            JSONArray fila = new JSONArray(sp.getString(KEY,"[]"));
+            if(fila.length() > 0){
+                fila.remove(0);
+                sp.edit().putString(KEY, fila.toString()).apply();
+            }
+        }catch(Exception e){ e.printStackTrace(); }
+    }
 
     public static int quantidade(Context context){
-
         try{
-
-            SharedPreferences sp =
-                    context.getSharedPreferences(PREF, Context.MODE_PRIVATE);
-
-            JSONArray fila =
-                    new JSONArray(sp.getString(KEY,"[]"));
-
+            SharedPreferences sp = context.getSharedPreferences(PREF, Context.MODE_PRIVATE);
+            JSONArray fila = new JSONArray(sp.getString(KEY,"[]"));
             return fila.length();
-
         }catch(Exception e){
             return 0;
         }
-
     }
 }

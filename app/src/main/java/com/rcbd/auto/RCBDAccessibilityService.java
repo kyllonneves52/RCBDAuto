@@ -1,19 +1,21 @@
 package com.rcbd.auto;
 
 import android.accessibilityservice.AccessibilityService;
-import android.view.accessibility.AccessibilityEvent;
-import android.view.accessibility.AccessibilityNodeInfo;
+import android.accessibilityservice.GestureDescription;
 import android.content.ClipboardManager;
 import android.content.ClipData;
+import android.content.Context;
+import android.graphics.Path;
 import android.os.Handler;
-import android.widget.Toast;
+import android.os.Looper;
+import android.view.accessibility.AccessibilityEvent;
 
 public class RCBDAccessibilityService extends AccessibilityService {
     private static RCBDAccessibilityService instancia;
     private int passo = 0;
     private String[] dados = new String[4];
     private boolean executando = false;
-    private Handler handler = new Handler();
+    private Handler handler = new Handler(Looper.getMainLooper());
     private Runnable timeout;
 
     @Override
@@ -31,7 +33,7 @@ public class RCBDAccessibilityService extends AccessibilityService {
             instancia.executando = true;
             instancia.passo = 0;
             instancia.iniciarTimeout();
-            instancia.handler.postDelayed(() -> instancia.executarFluxo(), 5000);// Pause 5s igual teu macro depois do *162#
+            instancia.handler.postDelayed(() -> instancia.executarFluxo(), 5000); // 5s igual teu macro
         }
     }
 
@@ -60,43 +62,52 @@ public class RCBDAccessibilityService extends AccessibilityService {
         // PASSO 4: COLAR NUMERO + ENTER + PAUSE 4s
         colarEEnter(dados[3], 4000, () -> {
         // PASSO 5: CLICAR CONFIRMAR
-        AccessibilityNodeInfo node = getRootInActiveWindow();
-        clicarBotao(node, "confirmar");
+        clicar(540, 1850); // Posição do botão CONFIRMAR
         LogManager.registar(this, "RCBD executado: " + dados[2] + "MB → " + dados[3]);
         QueueManager.removerPrimeiro(this);
         pararExecucao();
         handler.postDelayed(() -> UssdManager.iniciarEnvio(this), 3000);
-        });});});});
+        });});});
     }
 
     private void colarEEnter(String texto, int delay, Runnable proximo){
-        AccessibilityNodeInfo node = getRootInActiveWindow();
-        colarNoCampo(node, texto);
+        // 1. Coloca no clipboard
+        ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        clipboard.setPrimaryClip(ClipData.newPlainText("rcbd", texto));
+
+        // 2. Toque longo no campo do discador pra aparecer "Colar"
         handler.postDelayed(() -> {
-            AccessibilityNodeInfo n2 = getRootInActiveWindow();
-            clicarBotao(n2, "enviar");
-            handler.postDelayed(proximo, delay);
-        }, 500);
+            toqueLongo(540, 1500); // Centro da tela onde fica o campo
+
+            // 3. Espera e clica em "Colar"
+            handler.postDelayed(() -> {
+                clicar(540, 1600); // Posição do botão "Colar"
+
+                // 4. Espera colar e clica em Enviar/Ligar
+                handler.postDelayed(() -> {
+                    clicar(540, 1900); // Botão de ligar/enviar
+                    handler.postDelayed(proximo, delay);
+                }, 500);
+
+            }, 400);
+
+        }, 200);
     }
 
-    private void colarNoCampo(AccessibilityNodeInfo node, String texto){
-        if(node == null ||!node.isEditable()) return;
-        ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-        ClipData clip = ClipData.newPlainText("rcbd", texto);
-        clipboard.setPrimaryClip(clip);
-        node.performAction(AccessibilityNodeInfo.ACTION_FOCUS);
-        handler.postDelayed(() -> node.performAction(AccessibilityNodeInfo.ACTION_PASTE), 200);
+    private void clicar(int x, int y) {
+        Path path = new Path();
+        path.moveTo(x, y);
+        GestureDescription.Builder builder = new GestureDescription.Builder();
+        builder.addStroke(new GestureDescription.StrokeDescription(path, 0, 100));
+        dispatchGesture(builder.build(), null, null);
     }
 
-    private void clicarBotao(AccessibilityNodeInfo node, String texto){
-        if(node == null) return;
-        String txt = node.getText()!=null? node.getText().toString().toLowerCase() : "";
-        String desc = node.getContentDescription()!=null? node.getContentDescription().toString().toLowerCase() : "";
-        if(txt.contains(texto) || desc.contains(texto)){
-            node.performAction(AccessibilityNodeInfo.ACTION_CLICK);
-            return;
-        }
-        for(int i=0;i<node.getChildCount();i++) clicarBotao(node.getChild(i), texto);
+    private void toqueLongo(int x, int y) {
+        Path path = new Path();
+        path.moveTo(x, y);
+        GestureDescription.Builder builder = new GestureDescription.Builder();
+        builder.addStroke(new GestureDescription.StrokeDescription(path, 0, 500)); // 500ms = toque longo
+        dispatchGesture(builder.build(), null, null);
     }
 
     @Override public void onAccessibilityEvent(AccessibilityEvent event) {}

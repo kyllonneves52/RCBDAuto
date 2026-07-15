@@ -8,111 +8,97 @@ import android.os.Handler;
 import android.widget.Toast;
 
 public class RCBDAccessibilityService extends AccessibilityService {
-
     private static RCBDAccessibilityService instancia;
-    private int passo = 0; // agora é só contador
+    private int passo = 0;
+    private String[] dados = new String[4]; // 0=8 1=2 2=MB 3=Numero
+    private boolean executando = false;
     private Handler handler = new Handler();
-    private String[] dados = new String[4];
+    private Runnable timeout;
 
     @Override
-    protected void onServiceConnected(){
+    protected void onServiceConnected() {
         super.onServiceConnected();
         instancia = this;
-        Toast.makeText(this, "RCBDAuto Ativo - Modo Direto", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "RCBDAuto Ativo - Seguro", Toast.LENGTH_SHORT).show();
+    }
+
+    public static void iniciarExecucao(String mb, String numero){
+        if(instancia!= null){
+            instancia.dados[0] = "8";
+            instancia.dados[1] = "2";
+            instancia.dados[2] = mb;
+            instancia.dados[3] = numero;
+            instancia.executando = true;
+            instancia.passo = 0;
+            instancia.iniciarTimeout();
+        }
+    }
+
+    private void iniciarTimeout(){
+        if(timeout!= null) handler.removeCallbacks(timeout);
+        timeout = () -> {
+            LogManager.registar(this, "Timeout 25s: parando");
+            pararExecucao();
+        };
+        handler.postDelayed(timeout, 25000);
+    }
+
+    private void pararExecucao(){
+        executando = false;
+        passo = 0;
+        for(int i=0; i<4; i++) dados[i] = null;
+        if(timeout!= null) handler.removeCallbacks(timeout);
     }
 
     @Override
-    public void onAccessibilityEvent(AccessibilityEvent event){
-        AccessibilityNodeInfo root = getRootInActiveWindow();
-        if(root == null) return;
+    public void onAccessibilityEvent(AccessibilityEvent event) {
+        if(!executando) return; // FICA PARADO SE NÃO MANDAR
+        if (event == null || event.getPackageName() == null) return;
 
-        // Pega os dados 1 vez só
-        if(dados[0] == null){
-            dados[0] = "8"; // Menu Internet
-            dados[1] = "2"; // Menu Transferir
-            dados[2] = Config.getMB(this); // Qtd
-            dados[3] = Config.getNumero(this); // Numero
+        String pkg = event.getPackageName().toString();
+        if (!pkg.contains("com.android.phone")) return;
+
+        AccessibilityNodeInfo node = getRootInActiveWindow();
+        if (node == null) return;
+
+        if (passo < 4) {
+            digitarOuClicar(node, dados[passo]);
+            passo++;
         }
 
-        // Se já enviou os 4, confirma e sai
-        if(passo >= 4){
-            clicarEnviar(root);
-            handler.postDelayed(() -> {
-                clicarConfirmar(root);
-                LogManager.registar(this, "Envio concluido");
-                QueueManager.removerPrimeiro(this);
-                passo = 0;
-                dados[0] = null;
-                handler.postDelayed(() -> UssdManager.iniciarEnvio(this), 3000);
-            }, 2000);
-            return;
+        if (passo >= 4) {
+            LogManager.registar(this, "Ciclo finalizado");
+            QueueManager.removerPrimeiro(this);
+            pararExecucao();
+            handler.postDelayed(() -> UssdManager.iniciarEnvio(this), 3000);
         }
-
-        // Só digita
-        digitarPasso(root, dados[passo]);
-        passo++;
     }
 
-    private void digitarPasso(AccessibilityNodeInfo root, String texto){
-        handler.postDelayed(() -> {
-            LogManager.registar(this, "Digitando: " + texto);
-            clicarCampo(root);
-            handler.postDelayed(() -> {
-                enviarTexto(root, texto);
-                handler.postDelayed(() -> clicarEnviar(root), 1000);
-            }, 500);
-        }, 2000);
-    }
-
-    private void clicarCampo(AccessibilityNodeInfo node){
-        if(node == null) return;
-        if(node.isEditable() || node.isClickable()){
-            node.performAction(AccessibilityNodeInfo.ACTION_CLICK);
-            return;
-        }
-        for(int i=0;i<node.getChildCount();i++) clicarCampo(node.getChild(i));
-    }
-
-    private void enviarTexto(AccessibilityNodeInfo root, String texto){
-        if(root == null) return;
-        if(root.isEditable()){
+    private void digitarOuClicar(AccessibilityNodeInfo node, String texto){
+        if(node.isEditable()){
             Bundle args = new Bundle();
             args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, texto);
-            root.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args);
-            return;
+            node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args);
+            handler.postDelayed(() -> clicarEnviar(node), 800);
+        } else {
+            clicarEnviar(node);
         }
-        for(int i=0;i<root.getChildCount();i++) enviarTexto(root.getChild(i), texto);
     }
 
     private void clicarEnviar(AccessibilityNodeInfo node){
         if(node == null) return;
-        String texto = node.getText()!=null? node.getText().toString().toLowerCase() : "";
-        if(texto.contains("enviar") || texto.contains("ok") || texto.contains("confirmar") || texto.contains("responder")){
+        String txt = node.getText()!=null? node.getText().toString().toLowerCase() : "";
+        if(txt.contains("enviar") || txt.contains("ok") || txt.contains("1")){
             node.performAction(AccessibilityNodeInfo.ACTION_CLICK);
             return;
         }
         for(int i=0;i<node.getChildCount();i++) clicarEnviar(node.getChild(i));
     }
 
-    private void clicarConfirmar(AccessibilityNodeInfo node){
-        if(node == null) return;
-        String texto = node.getText()!=null? node.getText().toString().toLowerCase() : "";
-        if(texto.contains("1") || texto.contains("sim") || texto.contains("confirm")){
-            node.performAction(AccessibilityNodeInfo.ACTION_CLICK);
-            return;
-        }
-        for(int i=0;i<node.getChildCount();i++) clicarConfirmar(node.getChild(i));
-    }
-
     @Override
-    public void onInterrupt(){}
-
-    public void resetarEtapa(){
-        passo = 0;
-        dados[0] = null;
+    public void onInterrupt(){
+        pararExecucao();
     }
 
-    public static RCBDAccessibilityService getInstancia(){ 
-        return instancia; 
-    }
+    public static RCBDAccessibilityService getInstancia(){ return instancia; }
 }

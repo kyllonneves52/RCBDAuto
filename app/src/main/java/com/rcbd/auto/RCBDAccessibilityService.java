@@ -2,9 +2,11 @@ package com.rcbd.auto;
 
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.AccessibilityServiceInfo;
+import android.accessibilityservice.GestureDescription;
 import android.content.ClipboardManager;
 import android.content.ClipData;
 import android.content.Context;
+import android.graphics.Path;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.accessibility.AccessibilityEvent;
@@ -64,12 +66,10 @@ public class RCBDAccessibilityService extends AccessibilityService {
     }
 
     private void colarApenas(String texto, int delay, Runnable proximo){
-        // 1. Coloca no clipboard
         ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
         clipboard.setPrimaryClip(ClipData.newPlainText("rcbd", texto));
 
         handler.postDelayed(() -> {
-            // 2. Procura QUALQUER campo editável na tela e cola
             AccessibilityNodeInfo node = getRootInActiveWindow();
             if(node!= null){
                 AccessibilityNodeInfo campo = encontrarCampoEditavel(node);
@@ -79,30 +79,55 @@ public class RCBDAccessibilityService extends AccessibilityService {
                         campo.performAction(AccessibilityNodeInfo.ACTION_PASTE);
                     }, 100);
                 } else {
-                    // Fallback: cola global
-                    performGlobalAction(AccessibilityService.GLOBAL_ACTION_PASTE);
+                    // Fallback: Toque longo pra abrir menu colar
+                    toqueLongoCentro();
+                    handler.postDelayed(() -> clicarPorTexto("COLAR","PASTE"), 400);
                 }
             }
-
             handler.postDelayed(proximo, delay);
-
         }, 200);
     }
 
     private AccessibilityNodeInfo encontrarCampoEditavel(AccessibilityNodeInfo node){
         if(node == null) return null;
-
-        // Se for editável retorna ele
         if(node.isEditable() && node.isEnabled() && node.isVisibleToUser()){
             return node;
         }
-
-        // Senão procura nos filhos
         for(int i=0;i<node.getChildCount();i++){
             AccessibilityNodeInfo achado = encontrarCampoEditavel(node.getChild(i));
             if(achado!= null) return achado;
         }
         return null;
+    }
+
+    private void clicarPorTexto(String... textos){
+        AccessibilityNodeInfo node = getRootInActiveWindow();
+        if(node == null) return;
+        for(String t : textos){
+            if(clicarRecursivo(node, t.toLowerCase())) break;
+        }
+    }
+
+    private boolean clicarRecursivo(AccessibilityNodeInfo node, String texto){
+        if(node == null) return false;
+        String txt = node.getText()!=null? node.getText().toString().toLowerCase() : "";
+        String desc = node.getContentDescription()!=null? node.getContentDescription().toString().toLowerCase() : "";
+        if(txt.contains(texto) || desc.contains(texto)){
+            node.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+            return true;
+        }
+        for(int i=0;i<node.getChildCount();i++){
+            if(clicarRecursivo(node.getChild(i), texto)) return true;
+        }
+        return false;
+    }
+
+    private void toqueLongoCentro(){
+        Path path = new Path();
+        path.moveTo(600, 1000);
+        GestureDescription.Builder builder = new GestureDescription.Builder();
+        builder.addStroke(new GestureDescription.StrokeDescription(path, 0, 500));
+        dispatchGesture(builder.build(), null, null);
     }
 
     @Override public void onAccessibilityEvent(AccessibilityEvent event) {}

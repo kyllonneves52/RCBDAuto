@@ -1,12 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.CALL_PHONE"/>
-
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
 
     <application
         android:theme="@style/AppTheme"
         android:label="RCBDAuto">
-
 
         <activity
             android:name=".MainActivity"
@@ -19,26 +18,20 @@
 
         </activity>
 
-
-
         <service
             android:name=".RCBDAccessibilityService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
             android:exported="true">
 
-
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService"/>
             </intent-filter>
-
 
             <meta-data
                 android:name="android.accessibilityservice"
                 android:resource="@xml/accessibility_service_config"/>
 
-
         </service>
-
 
         <service
             android:name=".WhatsAppNotificationService"
@@ -51,7 +44,6 @@
             </intent-filter>
 
         </service>
-
 
     </application>
 

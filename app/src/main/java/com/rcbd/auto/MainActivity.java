@@ -7,6 +7,8 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.content.Intent;
+import android.net.Uri;
+import android.provider.Settings;
 
 public class MainActivity extends Activity {
 
@@ -26,6 +28,13 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
 
         startService(new Intent(this, WhatsAppNotificationService.class));
+
+        // PEDIR PERMISSÃO DE SOBREPOSIÇÃO
+        if (!Settings.canDrawOverlays(this)) {
+            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:" + getPackageName()));
+            startActivityForResult(intent, 100);
+        }
 
         mb = findViewById(R.id.mb);
         numero = findViewById(R.id.numero);

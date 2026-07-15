@@ -3,23 +3,19 @@ package com.rcbd.auto;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import org.json.JSONObject;
 
 public class UssdManager {
     
     public static void iniciarEnvio(Context context){
-        String numero = QueueManager.pegarPrimeiroNumero(context);
-        if(numero == null){
+        JSONObject obj = QueueManager.pegarProximo(context);
+        if(obj == null){
             return;
         }
         
-        // Reseta o serviço
-        if(RCBDAccessibilityService.getInstancia() != null){
-            RCBDAccessibilityService.getInstancia().resetarEtapa();
-        }
-        
+        String numero = obj.getString("numero");
         LogManager.registar(context, "Iniciando envio para: " + numero);
         
-        // Abre o *162#
         String ussd = "*162#";
         Intent intent = new Intent(Intent.ACTION_CALL);
         intent.setData(Uri.parse("tel:" + Uri.encode(ussd)));

@@ -1,19 +1,12 @@
-plugins {
-    id 'com.android.application'
-}
-
 android {
     namespace 'com.rcbd.auto'
-    compileSdk 35
+    compileSdk 31
 
     defaultConfig {
         applicationId "com.rcbd.auto"
         minSdk 23
-        targetSdk 35
+        targetSdk 31
         versionCode 1
         versionName "1.0"
     }
-}
-
-dependencies {
 }

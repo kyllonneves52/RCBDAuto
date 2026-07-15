@@ -9,8 +9,6 @@ import android.os.Bundle;
 public class WhatsAppNotificationService
         extends NotificationListenerService {
 
-
-
     @Override
     public void onNotificationPosted(
             StatusBarNotification sbn
@@ -27,7 +25,7 @@ public class WhatsAppNotificationService
 
         if(!pacote.equals("com.whatsapp")
                 &&
-           !pacote.equals("com.whatsapp.w4b")){
+          !pacote.equals("com.whatsapp.w4b")){
 
 
             return;
@@ -68,41 +66,42 @@ public class WhatsAppNotificationService
                 texto.toString();
 
 
-String[] comando =
-        CommandParser.analisarMandar(mensagem);
+        // 1. CORRIGIDO: CommandParser -> MessageParser
+        String[] comando =
+                MessageParser.analisarMandar(mensagem);
 
 
-if(comando != null){
+        if(comando!= null){
 
 
-    String mb =
-            comando[0];
+            String mb =
+                    comando[0];
 
 
-    String numero =
-            comando[1];
+            String numero =
+                    comando[1];
 
 
-    QueueManager.adicionar(
-            this,
-            mb,
-            numero
-    );
+            QueueManager.adicionar(
+                    this,
+                    mb,
+                    numero
+            );
 
 
-    LogManager.registar(
-            this,
-            "Pedido recebido: "
-            + mb
-            + "MB -> "
-            + numero
-    );
+            LogManager.registar(
+                    this,
+                    "Pedido recebido: "
+                    + mb
+                    + "MB -> "
+                    + numero
+            );
 
 
-UssdManager.iniciarEnvio(this);
+            UssdManager.iniciarEnvio(this);
 
 
-}
+        }
 
 
         LogManager.registar(
@@ -112,48 +111,11 @@ UssdManager.iniciarEnvio(this);
         );
 
 
-String[] dados =
-        MessageParser.analisar(mensagem);
-
-
-if(dados != null){
-
-    String numero =
-            dados[0];
-
-
-    String valor =
-            dados[1];
-
-
-    LogManager.registar(
-            this,
-            "Extraído -> Número: "
-            + numero
-            + " Valor: "
-            + valor
-    );
-
-}
-
-
-
-LogManager.registar(
-        this,
-        "Extraído -> Número: "
-        + numero
-        + " Valor: "
-        + valor
-);
-
-
-        // Próximo passo:
-        // enviar para MessageParser
+        // 2. CORRIGIDO: Removi o bloco que usava analisar() e variaveis fora do escopo
+        // Se precisar extrair algo diferente depois, cria outro metodo no MessageParser
 
 
     }
-
-
 
     @Override
     public void onNotificationRemoved(

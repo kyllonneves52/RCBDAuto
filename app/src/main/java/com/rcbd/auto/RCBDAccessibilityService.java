@@ -3,14 +3,15 @@ package com.rcbd.auto;
 import android.accessibilityservice.AccessibilityService;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
-import android.os.Bundle;
+import android.content.ClipboardManager;
+import android.content.ClipData;
 import android.os.Handler;
 import android.widget.Toast;
 
 public class RCBDAccessibilityService extends AccessibilityService {
     private static RCBDAccessibilityService instancia;
     private int passo = 0;
-    private String[] dados = new String[4]; // 0=8 1=2 2=MB 3=Numero
+    private String[] dados = new String[4];
     private boolean executando = false;
     private Handler handler = new Handler();
     private Runnable timeout;
@@ -19,7 +20,6 @@ public class RCBDAccessibilityService extends AccessibilityService {
     protected void onServiceConnected() {
         super.onServiceConnected();
         instancia = this;
-        Toast.makeText(this, "RCBDAuto Ativo - Seguro", Toast.LENGTH_SHORT).show();
     }
 
     public static void iniciarExecucao(String mb, String numero){
@@ -31,15 +31,13 @@ public class RCBDAccessibilityService extends AccessibilityService {
             instancia.executando = true;
             instancia.passo = 0;
             instancia.iniciarTimeout();
+            instancia.handler.postDelayed(() -> instancia.executarFluxo(), 5000);// Pause 5s igual teu macro depois do *162#
         }
     }
 
     private void iniciarTimeout(){
         if(timeout!= null) handler.removeCallbacks(timeout);
-        timeout = () -> {
-            LogManager.registar(this, "Timeout 25s: parando");
-            pararExecucao();
-        };
+        timeout = () -> pararExecucao();
         handler.postDelayed(timeout, 25000);
     }
 
@@ -50,55 +48,58 @@ public class RCBDAccessibilityService extends AccessibilityService {
         if(timeout!= null) handler.removeCallbacks(timeout);
     }
 
-    @Override
-    public void onAccessibilityEvent(AccessibilityEvent event) {
-        if(!executando) return; // FICA PARADO SE NÃO MANDAR
-        if (event == null || event.getPackageName() == null) return;
+    private void executarFluxo(){
+        if(!executando) return;
 
-        String pkg = event.getPackageName().toString();
-        if (!pkg.contains("com.android.phone")) return;
-
+        // PASSO 1: COLAR 8 + ENTER + PAUSE 2s
+        colarEEnter(dados[0], 2000, () -> {
+        // PASSO 2: COLAR 2 + ENTER + PAUSE 5s
+        colarEEnter(dados[1], 5000, () -> {
+        // PASSO 3: COLAR MB + ENTER + PAUSE 5s
+        colarEEnter(dados[2], 5000, () -> {
+        // PASSO 4: COLAR NUMERO + ENTER + PAUSE 4s
+        colarEEnter(dados[3], 4000, () -> {
+        // PASSO 5: CLICAR CONFIRMAR
         AccessibilityNodeInfo node = getRootInActiveWindow();
-        if (node == null) return;
-
-        if (passo < 4) {
-            digitarOuClicar(node, dados[passo]);
-            passo++;
-        }
-
-        if (passo >= 4) {
-            LogManager.registar(this, "Ciclo finalizado");
-            QueueManager.removerPrimeiro(this);
-            pararExecucao();
-            handler.postDelayed(() -> UssdManager.iniciarEnvio(this), 3000);
-        }
+        clicarBotao(node, "confirmar");
+        LogManager.registar(this, "RCBD executado: " + dados[2] + "MB → " + dados[3]);
+        QueueManager.removerPrimeiro(this);
+        pararExecucao();
+        handler.postDelayed(() -> UssdManager.iniciarEnvio(this), 3000);
+        });});});});
     }
 
-    private void digitarOuClicar(AccessibilityNodeInfo node, String texto){
-        if(node.isEditable()){
-            Bundle args = new Bundle();
-            args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, texto);
-            node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args);
-            handler.postDelayed(() -> clicarEnviar(node), 800);
-        } else {
-            clicarEnviar(node);
-        }
+    private void colarEEnter(String texto, int delay, Runnable proximo){
+        AccessibilityNodeInfo node = getRootInActiveWindow();
+        colarNoCampo(node, texto);
+        handler.postDelayed(() -> {
+            AccessibilityNodeInfo n2 = getRootInActiveWindow();
+            clicarBotao(n2, "enviar");
+            handler.postDelayed(proximo, delay);
+        }, 500);
     }
 
-    private void clicarEnviar(AccessibilityNodeInfo node){
+    private void colarNoCampo(AccessibilityNodeInfo node, String texto){
+        if(node == null ||!node.isEditable()) return;
+        ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+        ClipData clip = ClipData.newPlainText("rcbd", texto);
+        clipboard.setPrimaryClip(clip);
+        node.performAction(AccessibilityNodeInfo.ACTION_FOCUS);
+        handler.postDelayed(() -> node.performAction(AccessibilityNodeInfo.ACTION_PASTE), 200);
+    }
+
+    private void clicarBotao(AccessibilityNodeInfo node, String texto){
         if(node == null) return;
         String txt = node.getText()!=null? node.getText().toString().toLowerCase() : "";
-        if(txt.contains("enviar") || txt.contains("ok") || txt.contains("1")){
+        String desc = node.getContentDescription()!=null? node.getContentDescription().toString().toLowerCase() : "";
+        if(txt.contains(texto) || desc.contains(texto)){
             node.performAction(AccessibilityNodeInfo.ACTION_CLICK);
             return;
         }
-        for(int i=0;i<node.getChildCount();i++) clicarEnviar(node.getChild(i));
+        for(int i=0;i<node.getChildCount();i++) clicarBotao(node.getChild(i), texto);
     }
 
-    @Override
-    public void onInterrupt(){
-        pararExecucao();
-    }
-
+    @Override public void onAccessibilityEvent(AccessibilityEvent event) {}
+    @Override public void onInterrupt(){ pararExecucao(); }
     public static RCBDAccessibilityService getInstancia(){ return instancia; }
 }

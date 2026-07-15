@@ -1,7 +1,7 @@
 package com.rcbd.auto;
 
 
-public class CommandParser {
+public class MessageParser {
 
 
     public static String[] analisarMandar(String mensagem){

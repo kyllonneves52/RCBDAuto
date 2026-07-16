@@ -45,7 +45,7 @@ public class RCBDAccessibilityService extends AccessibilityService {
     private void iniciarTimeout(){
         if(timeout!= null) handler.removeCallbacks(timeout);
         timeout = () -> pararExecucao();
-        handler.postDelayed(timeout, 30000);
+        handler.postDelayed(timeout, 35000);
     }
 
     private void pararExecucao(){
@@ -56,19 +56,29 @@ public class RCBDAccessibilityService extends AccessibilityService {
     }
 
     private void executarFluxo(){
-        if(!executando || passo >= 4) {
-            pararExecucao();
-            return;
-        }
+        if(!executando) return;
 
-        String texto = dados[passo];
-        colarApenas(texto, 2000, () -> {
-            passo++;
-            handler.postDelayed(() -> executarFluxo(), 1500);
-        });
+        if(passo < 4){
+            // PAUSAS IGUAIS MACRODROID
+            int delay = 2000;
+            if(passo == 1) delay = 5000; // depois do 2
+            if(passo == 2) delay = 5000; // depois do MB
+            if(passo == 3) delay = 4000; // depois do Numero
+
+            String texto = dados[passo];
+            colarEEnter(texto, delay, () -> {
+                passo++;
+                handler.postDelayed(() -> executarFluxo(), 500);
+            });
+        } else {
+            // PASSO 5: CLICAR EM CONFIRMAR IGUAL MACRODROID
+            handler.postDelayed(() -> {
+    if(!clicarPorTexto("OK", "Enviar", "Ligar", "Próximo", "→", "Next", "Send")){
+        performGlobalAction(GLOBAL_ACTION_ENTER); // Aperta ENTER de verdade se não achar botão
     }
+}, 300);
 
-    private void colarApenas(String texto, int delay, Runnable proximo){
+    private void colarEEnter(String texto, int delay, Runnable proximo){
         ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
         clipboard.setPrimaryClip(ClipData.newPlainText("rcbd", texto));
 
@@ -80,10 +90,12 @@ public class RCBDAccessibilityService extends AccessibilityService {
                     campo.performAction(AccessibilityNodeInfo.ACTION_FOCUS);
                     handler.postDelayed(() -> {
                         campo.performAction(AccessibilityNodeInfo.ACTION_PASTE);
-                        // ENTER PRA AVANÇAR PRO PRÓXIMO CAMPO IGUAL MACRODROID
+
+                        // MISTURA AQUI: Em vez de ACTION_NEXT, clica no botão igual teu segundo arquivo
                         handler.postDelayed(() -> {
-                            campo.performAction(AccessibilityNodeInfo.ACTION_NEXT_AT_MOVEMENT_GRANULARITY);
+                            clicarPorTexto("OK", "Enviar", "Ligar", "Próximo", "→");
                         }, 300);
+
                     }, 100);
                 } else {
                     // Fallback: Toque longo pra abrir menu colar

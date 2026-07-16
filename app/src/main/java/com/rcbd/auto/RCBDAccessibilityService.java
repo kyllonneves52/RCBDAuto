@@ -77,6 +77,8 @@ public class RCBDAccessibilityService extends AccessibilityService {
         performGlobalAction(GLOBAL_ACTION_ENTER); // Aperta ENTER de verdade se não achar botão
     }
 }, 300);
+        }); // <- FECHA O ELSE AQUI
+    } // <- FECHA O METODO ANTERIOR AQUI
 
     private void colarEEnter(String texto, int delay, Runnable proximo){
         ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);

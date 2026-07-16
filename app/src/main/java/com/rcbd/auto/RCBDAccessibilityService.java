@@ -59,11 +59,10 @@ public class RCBDAccessibilityService extends AccessibilityService {
         if(!executando) return;
 
         if(passo < 4){
-            // PAUSAS IGUAIS MACRODROID
             int delay = 2000;
-            if(passo == 1) delay = 5000; // depois do 2
-            if(passo == 2) delay = 5000; // depois do MB
-            if(passo == 3) delay = 4000; // depois do Numero
+            if(passo == 1) delay = 5000;
+            if(passo == 2) delay = 5000;
+            if(passo == 3) delay = 4000;
 
             String texto = dados[passo];
             colarEEnter(texto, delay, () -> {
@@ -71,11 +70,10 @@ public class RCBDAccessibilityService extends AccessibilityService {
                 handler.postDelayed(() -> executarFluxo(), 500);
             });
         } else {
-            // PASSO 5: CLICAR EM CONFIRMAR IGUAL MACRODROID
             handler.postDelayed(() -> {
-                if(!clicarPorTexto("OK", "Enviar", "Ligar", "Próximo", "→", "Next", "Send", "CONFIRMAR")){
-                    performGlobalAction(AccessibilityService.GLOBAL_ACTION_ENTER); // Aperta ENTER de verdade se não achar botão
-                }
+                clicarPorTexto("OK", "Enviar", "Ligar", "Próximo", "→", "Next", "Send", "CONFIRMAR");
+                // Se não clicou em nada, aperta ENTER
+                handler.postDelayed(() -> apertarEnter(), 200);
                 pararExecucao();
             }, 300);
         }
@@ -93,23 +91,27 @@ public class RCBDAccessibilityService extends AccessibilityService {
                     campo.performAction(AccessibilityNodeInfo.ACTION_FOCUS);
                     handler.postDelayed(() -> {
                         campo.performAction(AccessibilityNodeInfo.ACTION_PASTE);
-
-                        // MISTURA AQUI: Tenta NEXT, se não tiver aperta ENTER
                         handler.postDelayed(() -> {
-                            if(!clicarPorTexto("OK", "Enviar", "Ligar", "Próximo", "→")){
-                                performGlobalAction(AccessibilityService.GLOBAL_ACTION_ENTER);
-                            }
+                            // Tenta clicar em botão, se não achar aperta ENTER
+                            clicarPorTexto("OK", "Enviar", "Ligar", "Próximo", "→");
+                            handler.postDelayed(() -> apertarEnter(), 200);
                         }, 300);
-
                     }, 100);
                 } else {
-                    // Fallback: Toque longo pra abrir menu colar
                     toqueLongoCentro();
                     handler.postDelayed(() -> clicarPorTexto("COLAR","PASTE"), 400);
                 }
             }
             handler.postDelayed(proximo, delay);
         }, 200);
+    }
+
+    private void apertarEnter(){
+        Path path = new Path();
+        path.moveTo(540, 1800); // posição do ENTER do teclado
+        GestureDescription.Builder builder = new GestureDescription.Builder();
+        builder.addStroke(new GestureDescription.StrokeDescription(path, 0, 100));
+        dispatchGesture(builder.build(), null, null);
     }
 
     private AccessibilityNodeInfo encontrarCampoEditavel(AccessibilityNodeInfo node){

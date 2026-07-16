@@ -56,30 +56,30 @@ public class RCBDAccessibilityService extends AccessibilityService {
     }
 
     private void executarFluxo(){
-    if(!executando) return;
+        if(!executando) return;
 
-    if(passo < 4){
-        // PAUSAS IGUAIS MACRODROID
-        int delay = 2000;
-        if(passo == 1) delay = 5000; // depois do 2
-        if(passo == 2) delay = 5000; // depois do MB
-        if(passo == 3) delay = 4000; // depois do Numero
+        if(passo < 4){
+            // PAUSAS IGUAIS MACRODROID
+            int delay = 2000;
+            if(passo == 1) delay = 5000; // depois do 2
+            if(passo == 2) delay = 5000; // depois do MB
+            if(passo == 3) delay = 4000; // depois do Numero
 
-        String texto = dados[passo];
-        colarEEnter(texto, delay, () -> {
-            passo++;
-            handler.postDelayed(() -> executarFluxo(), 500);
-        });
-    } else {
-        // PASSO 5: CLICAR EM CONFIRMAR IGUAL MACRODROID
-        handler.postDelayed(() -> {
-            if(!clicarPorTexto("OK", "Enviar", "Ligar", "Próximo", "→", "Next", "Send", "CONFIRMAR")){
-                performGlobalAction(GLOBAL_ACTION_ENTER); // Aperta ENTER de verdade se não achar botão
-            }
-            pararExecucao();
-        }, 300);
+            String texto = dados[passo];
+            colarEEnter(texto, delay, () -> {
+                passo++;
+                handler.postDelayed(() -> executarFluxo(), 500);
+            });
+        } else {
+            // PASSO 5: CLICAR EM CONFIRMAR IGUAL MACRODROID
+            handler.postDelayed(() -> {
+                if(!clicarPorTexto("OK", "Enviar", "Ligar", "Próximo", "→", "Next", "Send", "CONFIRMAR")){
+                    performGlobalAction(AccessibilityService.GLOBAL_ACTION_ENTER); // Aperta ENTER de verdade se não achar botão
+                }
+                pararExecucao();
+            }, 300);
+        }
     }
-} // <- fecha o metodo aqui. Só 1 chave
 
     private void colarEEnter(String texto, int delay, Runnable proximo){
         ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
@@ -94,9 +94,11 @@ public class RCBDAccessibilityService extends AccessibilityService {
                     handler.postDelayed(() -> {
                         campo.performAction(AccessibilityNodeInfo.ACTION_PASTE);
 
-                        // MISTURA AQUI: Em vez de ACTION_NEXT, clica no botão igual teu segundo arquivo
+                        // MISTURA AQUI: Tenta NEXT, se não tiver aperta ENTER
                         handler.postDelayed(() -> {
-                            clicarPorTexto("OK", "Enviar", "Ligar", "Próximo", "→");
+                            if(!clicarPorTexto("OK", "Enviar", "Ligar", "Próximo", "→")){
+                                performGlobalAction(AccessibilityService.GLOBAL_ACTION_ENTER);
+                            }
                         }, 300);
 
                     }, 100);

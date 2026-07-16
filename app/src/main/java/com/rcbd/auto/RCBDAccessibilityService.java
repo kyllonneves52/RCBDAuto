@@ -45,7 +45,7 @@ public class RCBDAccessibilityService extends AccessibilityService {
     private void iniciarTimeout(){
         if(timeout!= null) handler.removeCallbacks(timeout);
         timeout = () -> pararExecucao();
-        handler.postDelayed(timeout, 25000);
+        handler.postDelayed(timeout, 30000);
     }
 
     private void pararExecucao(){
@@ -56,12 +56,15 @@ public class RCBDAccessibilityService extends AccessibilityService {
     }
 
     private void executarFluxo(){
-        if(!executando || passo >= 4) return;
+        if(!executando || passo >= 4) {
+            pararExecucao();
+            return;
+        }
 
         String texto = dados[passo];
         colarApenas(texto, 2000, () -> {
             passo++;
-            handler.postDelayed(() -> executarFluxo(), 2000);
+            handler.postDelayed(() -> executarFluxo(), 1500);
         });
     }
 
@@ -77,6 +80,10 @@ public class RCBDAccessibilityService extends AccessibilityService {
                     campo.performAction(AccessibilityNodeInfo.ACTION_FOCUS);
                     handler.postDelayed(() -> {
                         campo.performAction(AccessibilityNodeInfo.ACTION_PASTE);
+                        // ENTER PRA AVANÇAR PRO PRÓXIMO CAMPO IGUAL MACRODROID
+                        handler.postDelayed(() -> {
+                            campo.performAction(AccessibilityNodeInfo.ACTION_NEXT_AT_MOVEMENT_GRANULARITY);
+                        }, 300);
                     }, 100);
                 } else {
                     // Fallback: Toque longo pra abrir menu colar

@@ -17,8 +17,11 @@ public class UssdManager {
         
         try {
             String numero = obj.getString("numero");
-            String mb = obj.getString("mb"); // PEGA O MB TAMBEM
+            String mb = obj.getString("mb");
             LogManager.registar(context, "Iniciando envio para: " + numero);
+            
+            // REMOVE DA FILA PRA NÃO REPETIR
+            QueueManager.removerPrimeiro(context);
             
             String ussd = "*162#";
             Intent intent = new Intent(Intent.ACTION_CALL);
@@ -26,7 +29,6 @@ public class UssdManager {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             context.startActivity(intent);
             
-            // ESPERA 2s E MANDA PRO ACCESSIBILITY FAZER OS CLIQUES
             new android.os.Handler().postDelayed(() -> {
                 RCBDAccessibilityService.iniciarExecucao(mb, numero);
             }, 2000);

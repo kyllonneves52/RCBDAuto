@@ -124,7 +124,7 @@ public class RCBDAccessibilityService extends AccessibilityService {
             if(node!= null){
                 AccessibilityNodeInfo campo = encontrarCampoEditavel(node);
                 if(campo!= null){
-                    campo.performAction(AccessibilityServiceInfo.ACTION_FOCUS);
+                    campo.performAction(AccessibilityNodeInfo.ACTION_FOCUS);
                     handler.postDelayed(() -> {
                         campo.performAction(AccessibilityNodeInfo.ACTION_PASTE);
                         handler.postDelayed(() -> {

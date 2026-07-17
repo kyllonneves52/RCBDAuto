@@ -38,7 +38,7 @@ public class WhatsAppNotificationService
         LogManager.registar(this, "Notificacao recebida: " + mensagem);
 
         // USA O COMMANDPARSER PRA LER.mandar 100mb 848395255
-        boolean sucesso = CommandParser.processar(this, mensagem);
+        boolean sucesso = MessageParser.analisarMandar(mensagem);
 
         if(sucesso){
             // Pega o ultimo adicionado na fila

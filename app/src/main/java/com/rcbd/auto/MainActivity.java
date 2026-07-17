@@ -81,7 +81,8 @@ public class MainActivity extends Activity {
         atualizar.setOnClickListener(v -> atualizarEstado());
         diagnostico.setOnClickListener(v -> {
             log.setText("Diagnóstico iniciado...");
-            status.setText(StatusManager.verificar(this, modoApp));
+            status.setText(StatusManager.verificar(this) + "
+🟢 Modo: " + modoApp);
         });
         permissoes.setOnClickListener(v -> PermissionManager.abrirAcessibilidade(this));
     }
@@ -122,7 +123,8 @@ public class MainActivity extends Activity {
     }
 
     private void atualizarEstado(){
-        status.setText(StatusManager.verificar(this, modoApp));
+        status.setText(StatusManager.verificar(this) + "
+🟢 Modo: " + modoApp);
         fila.setText("Pedidos: " + QueueManager.quantidade(this));
         log.setText("RCBDAuto iniciado - Modo: " + modoApp);
     }

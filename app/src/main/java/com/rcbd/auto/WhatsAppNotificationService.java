@@ -21,16 +21,16 @@ public class WhatsAppNotificationService extends Service {
         Notification notification;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             notification = new Notification.Builder(this, CHANNEL_ID)
-                  .setContentTitle("RCBDAuto Rodando")
-                  .setContentText("Monitorando WhatsApp")
-                  .setSmallIcon(android.R.drawable.ic_dialog_info)
-                  .build();
+                 .setContentTitle("RCBDAuto Rodando")
+                 .setContentText("Monitorando WhatsApp")
+                 .setSmallIcon(android.R.drawable.ic_dialog_info)
+                 .build();
         } else {
             notification = new Notification.Builder(this)
-                  .setContentTitle("RCBDAuto Rodando")
-                  .setContentText("Monitorando WhatsApp")
-                  .setSmallIcon(android.R.drawable.ic_dialog_info)
-                  .build();
+                 .setContentTitle("RCBDAuto Rodando")
+                 .setContentText("Monitorando WhatsApp")
+                 .setSmallIcon(android.R.drawable.ic_dialog_info)
+                 .build();
         }
         
         startForeground(1, notification);
@@ -67,4 +67,7 @@ public class WhatsAppNotificationService extends Service {
     }
 
     @Override
-    public I
+    public IBinder onBind(Intent intent) {
+        return null;
+    }
+}

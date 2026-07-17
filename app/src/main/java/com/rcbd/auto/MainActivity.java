@@ -51,11 +51,9 @@ public class MainActivity extends Activity {
         log = findViewById(R.id.log);
         spinnerApp = findViewById(R.id.spinnerApp);
 
-        // NOVO: CARREGA TODOS OS APPS QUE ACEITAM TEXTO
         carregarListaApps();
 
         enviar.setEnabled(true);
-
         atualizarEstado();
 
         enviar.setOnClickListener(v -> {
@@ -81,13 +79,11 @@ public class MainActivity extends Activity {
         atualizar.setOnClickListener(v -> atualizarEstado());
         diagnostico.setOnClickListener(v -> {
             log.setText("Diagnóstico iniciado...");
- status.setText(StatusManager.verificar(this) + "
-Modo: " + modoApp);
+            status.setText(StatusManager.verificar(this) + "\nModo: " + modoApp);
         });
         permissoes.setOnClickListener(v -> PermissionManager.abrirAcessibilidade(this));
     }
 
-    // NOVO: FUNCAO QUE BUSCA TODOS OS APPS
     private void carregarListaApps(){
         ArrayList<String> listaApps = new ArrayList<>();
 
@@ -115,7 +111,7 @@ Modo: " + modoApp);
         spinnerApp.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                modoApp = listaPacotes.get(position); // Guarda o pacote direto
+                modoApp = listaPacotes.get(position);
                 atualizarEstado();
             }
             @Override public void onNothingSelected(AdapterView<?> parent) {}
@@ -123,8 +119,7 @@ Modo: " + modoApp);
     }
 
     private void atualizarEstado(){
- status.setText(StatusManager.verificar(this) + "
-Modo: " + modoApp);
+        status.setText(StatusManager.verificar(this) + "\nModo: " + modoApp);
         fila.setText("Pedidos: " + QueueManager.quantidade(this));
         log.setText("RCBDAuto iniciado - Modo: " + modoApp);
     }

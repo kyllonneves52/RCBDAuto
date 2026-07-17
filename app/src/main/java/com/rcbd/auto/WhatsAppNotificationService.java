@@ -8,7 +8,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.os.IBinder;
-import androidx.core.app.NotificationCompat;
 
 public class WhatsAppNotificationService extends Service {
 
@@ -18,11 +17,22 @@ public class WhatsAppNotificationService extends Service {
     public void onCreate() {
         super.onCreate();
         criarCanal();
-        Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
-              .setContentTitle("RCBDAuto Rodando")
-              .setContentText("Monitorando WhatsApp")
-              .setSmallIcon(android.R.drawable.ic_dialog_info)
-              .build();
+        
+        Notification notification;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            notification = new Notification.Builder(this, CHANNEL_ID)
+                  .setContentTitle("RCBDAuto Rodando")
+                  .setContentText("Monitorando WhatsApp")
+                  .setSmallIcon(android.R.drawable.ic_dialog_info)
+                  .build();
+        } else {
+            notification = new Notification.Builder(this)
+                  .setContentTitle("RCBDAuto Rodando")
+                  .setContentText("Monitorando WhatsApp")
+                  .setSmallIcon(android.R.drawable.ic_dialog_info)
+                  .build();
+        }
+        
         startForeground(1, notification);
     }
 
@@ -57,7 +67,4 @@ public class WhatsAppNotificationService extends Service {
     }
 
     @Override
-    public IBinder onBind(Intent intent) {
-        return null;
-    }
-}
+    public I

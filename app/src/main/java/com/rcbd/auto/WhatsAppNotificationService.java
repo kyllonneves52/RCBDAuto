@@ -1,53 +1,63 @@
 package com.rcbd.auto;
 
-import android.service.notification.NotificationListenerService;
-import android.service.notification.StatusBarNotification;
 import android.app.Notification;
-import android.os.Bundle;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.Service;
+import android.content.Context;
+import android.content.Intent;
+import android.os.Build;
+import android.os.IBinder;
+import androidx.core.app.NotificationCompat;
 
-public class WhatsAppNotificationService
-        extends NotificationListenerService {
+public class WhatsAppNotificationService extends Service {
+
+    private static final String CHANNEL_ID = "RCBDAutoService";
 
     @Override
-    public void onNotificationPosted(StatusBarNotification sbn){
+    public void onCreate() {
+        super.onCreate();
+        criarCanal();
+        Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
+              .setContentTitle("RCBDAuto Rodando")
+              .setContentText("Monitorando WhatsApp")
+              .setSmallIcon(android.R.drawable.ic_dialog_info)
+              .build();
+        startForeground(1, notification);
+    }
 
-        String pacote = sbn.getPackageName();
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        return START_STICKY;
+    }
 
-        // Aceitar WhatsApp normal e Business
-        if(!pacote.equals("com.whatsapp") &&!pacote.equals("com.whatsapp.w4b")){
-            return;
-        }
-
-        Notification notificacao = sbn.getNotification();
-        if(notificacao == null){
-            return;
-        }
-
-        Bundle extras = notificacao.extras;
-
-        CharSequence texto = extras.getCharSequence(Notification.EXTRA_TEXT);
-        CharSequence titulo = extras.getCharSequence(Notification.EXTRA_TITLE);
-
-        if(texto == null){
-            return;
-        }
-
-        // Junta titulo + texto pra pegar "Fulano:.mandar 100mb 848395255"
-        String mensagem = (titulo!= null? titulo.toString() + ": " : "") + texto.toString();
-
-        LogManager.registar(this, "Notificacao recebida: " + mensagem);
-
-        // USA O COMMANDPARSER PRA LER.mandar 100mb 848395255
-        boolean sucesso = MessageParser.analisarMandar(mensagem);
-
+    public static void processarMensagem(Context context, String mensagem) {
+        String[] dados = MessageParser.analisarMandar(mensagem);
+        boolean sucesso = dados!= null && dados.length >= 3;
         if(sucesso){
-            // Pega o ultimo adicionado na fila
-            RCBDAccessibilityService.setModo("USSD"); // Comando via zap sempre usa USSD
-            UssdManager.iniciarEnvio(this);
-            LogManager.registar(this, "Comando executado via WhatsApp");
+            String pacote = dados[0];
+            String mb = dados[1];
+            String numero = dados[2];
+            QueueManager.adicionar(context, mb, numero);
+            RCBDAccessibilityService.setModo(pacote);
+            UssdManager.iniciarEnvio(context);
+        }
+    }
+
+    private void criarCanal() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel serviceChannel = new NotificationChannel(
+                    CHANNEL_ID,
+                    "RCBDAuto Service Channel",
+                    NotificationManager.IMPORTANCE_LOW
+            );
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            manager.createNotificationChannel(serviceChannel);
         }
     }
 
     @Override
-    public void onNotificationRemoved(StatusBarNotification sbn){}
+    public IBinder onBind(Intent intent) {
+        return null;
+    }
 }

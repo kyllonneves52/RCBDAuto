@@ -25,21 +25,18 @@ public class MainActivity extends Activity {
     TextView log;
     Spinner spinnerApp;
     String modoApp = "USSD";
-    ArrayList<String> listaPacotes = new ArrayList<>(); // NOVO: guarda os pacotes
+    ArrayList<String> listaPacotes = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
         startService(new Intent(this, WhatsAppNotificationService.class));
-
         if (!Settings.canDrawOverlays(this)) {
             Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                     Uri.parse("package:" + getPackageName()));
             startActivityForResult(intent, 100);
         }
-
         mb = findViewById(R.id.mb);
         numero = findViewById(R.id.numero);
         enviar = findViewById(R.id.enviar);
@@ -50,32 +47,25 @@ public class MainActivity extends Activity {
         fila = findViewById(R.id.fila);
         log = findViewById(R.id.log);
         spinnerApp = findViewById(R.id.spinnerApp);
-
         carregarListaApps();
-
         enviar.setEnabled(true);
         atualizarEstado();
-
         enviar.setOnClickListener(v -> {
             String pacoteMB = mb.getText().toString().trim();
             String tel = numero.getText().toString().trim().replace(" ", "");
-
             if(pacoteMB.isEmpty() || tel.isEmpty()){
                 Toast.makeText(this, "Preencha MB e número", Toast.LENGTH_SHORT).show();
                 return;
             }
-
             QueueManager.adicionar(this, pacoteMB, tel);
             fila.setText("Pedidos: " + QueueManager.quantidade(this));
             log.setText("Pedido criado:\n" + pacoteMB + " MB\nNúmero: " + tel + "\nModo: " + modoApp);
             Toast.makeText(this, "Pedido na fila - Modo: " + modoApp, Toast.LENGTH_LONG).show();
-
             RCBDAccessibilityService.setModo(modoApp);
             UssdManager.iniciarEnvio(this);
             mb.setText("");
             numero.setText("");
         });
-
         atualizar.setOnClickListener(v -> atualizarEstado());
         diagnostico.setOnClickListener(v -> {
             log.setText("Diagnóstico iniciado...");
@@ -86,15 +76,12 @@ public class MainActivity extends Activity {
 
     private void carregarListaApps(){
         ArrayList<String> listaApps = new ArrayList<>();
-
         listaApps.add("USSD Direto");
         listaPacotes.add("USSD");
-
         PackageManager pm = getPackageManager();
         Intent intent = new Intent(Intent.ACTION_SEND);
         intent.setType("text/plain");
         List<ResolveInfo> apps = pm.queryIntentActivities(intent, 0);
-
         for(ResolveInfo info : apps){
             String nome = info.loadLabel(pm).toString();
             String pacote = info.activityInfo.packageName;
@@ -103,11 +90,9 @@ public class MainActivity extends Activity {
                 listaPacotes.add(pacote);
             }
         }
-
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, listaApps);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerApp.setAdapter(adapter);
-
         spinnerApp.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {

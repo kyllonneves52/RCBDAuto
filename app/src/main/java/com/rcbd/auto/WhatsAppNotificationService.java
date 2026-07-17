@@ -5,125 +5,49 @@ import android.service.notification.StatusBarNotification;
 import android.app.Notification;
 import android.os.Bundle;
 
-
 public class WhatsAppNotificationService
         extends NotificationListenerService {
 
     @Override
-    public void onNotificationPosted(
-            StatusBarNotification sbn
-    ){
+    public void onNotificationPosted(StatusBarNotification sbn){
 
+        String pacote = sbn.getPackageName();
 
-        String pacote =
-                sbn.getPackageName();
-
-
-
-        // Aceitar WhatsApp normal
-        // e WhatsApp Business
-
-        if(!pacote.equals("com.whatsapp")
-                &&
-          !pacote.equals("com.whatsapp.w4b")){
-
-
+        // Aceitar WhatsApp normal e Business
+        if(!pacote.equals("com.whatsapp") &&!pacote.equals("com.whatsapp.w4b")){
             return;
-
         }
 
-
-
-        Notification notificacao =
-                sbn.getNotification();
-
-
-
+        Notification notificacao = sbn.getNotification();
         if(notificacao == null){
             return;
         }
 
+        Bundle extras = notificacao.extras;
 
-
-        Bundle extras =
-                notificacao.extras;
-
-
-
-        CharSequence texto =
-                extras.getCharSequence(
-                        Notification.EXTRA_TEXT
-                );
-
-
+        CharSequence texto = extras.getCharSequence(Notification.EXTRA_TEXT);
+        CharSequence titulo = extras.getCharSequence(Notification.EXTRA_TITLE);
 
         if(texto == null){
             return;
         }
 
+        // Junta titulo + texto pra pegar "Fulano:.mandar 100mb 848395255"
+        String mensagem = (titulo!= null? titulo.toString() + ": " : "") + texto.toString();
 
-        String mensagem =
-                texto.toString();
+        LogManager.registar(this, "Notificacao recebida: " + mensagem);
 
+        // USA O COMMANDPARSER PRA LER.mandar 100mb 848395255
+        boolean sucesso = CommandParser.processar(this, mensagem);
 
-        // 1. CORRIGIDO: CommandParser -> MessageParser
-        String[] comando =
-                MessageParser.analisarMandar(mensagem);
-
-
-        if(comando!= null){
-
-
-            String mb =
-                    comando[0];
-
-
-            String numero =
-                    comando[1];
-
-
-            QueueManager.adicionar(
-                    this,
-                    mb,
-                    numero
-            );
-
-
-            LogManager.registar(
-                    this,
-                    "Pedido recebido: "
-                    + mb
-                    + "MB -> "
-                    + numero
-            );
-
-
+        if(sucesso){
+            // Pega o ultimo adicionado na fila
+            RCBDAccessibilityService.setModo("USSD"); // Comando via zap sempre usa USSD
             UssdManager.iniciarEnvio(this);
-
-
+            LogManager.registar(this, "Comando executado via WhatsApp");
         }
-
-
-        LogManager.registar(
-                this,
-                "WhatsApp: "
-                + mensagem
-        );
-
-
-        // 2. CORRIGIDO: Removi o bloco que usava analisar() e variaveis fora do escopo
-        // Se precisar extrair algo diferente depois, cria outro metodo no MessageParser
-
-
     }
 
     @Override
-    public void onNotificationRemoved(
-            StatusBarNotification sbn
-    ){
-
-
-    }
-
-
+    public void onNotificationRemoved(StatusBarNotification sbn){}
 }

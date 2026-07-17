@@ -7,8 +7,7 @@ public class CommandParser {
     public static boolean processar(Context context, String mensagem) {
 
         try {
-
-            mensagem = mensagem.trim();
+            mensagem = mensagem.trim().toLowerCase();
 
             String[] partes = mensagem.split(" ");
 
@@ -16,14 +15,16 @@ public class CommandParser {
                 return false;
             }
 
-            String comando = partes[0].toLowerCase();
+            String comando = partes[0];
 
-            if(!comando.equals("rcbd.mandar")){
+            // ACEITA.mandar
+            if(!comando.equals(".mandar")){
                 return false;
             }
 
-            String mb = partes[1];
-            String numero = partes[2];
+            // Pega MB e tira o "mb" se tiver
+            String mb = partes[1].replace("mb", "").replace("MB", "").trim();
+            String numero = partes[2].replace(" ", "").trim();
 
             QueueManager.adicionar(
                     context,
@@ -31,11 +32,12 @@ public class CommandParser {
                     numero
             );
 
+            LogManager.registar(context, "Comando adicionado: " + mb + "MB para " + numero);
             return true;
 
         } catch(Exception e){
-
             e.printStackTrace();
+            LogManager.registar(context, "Erro CommandParser: " + e.getMessage());
             return false;
         }
     }

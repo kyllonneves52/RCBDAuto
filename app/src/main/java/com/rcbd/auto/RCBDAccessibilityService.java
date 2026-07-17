@@ -6,6 +6,7 @@ import android.accessibilityservice.GestureDescription;
 import android.content.ClipboardManager;
 import android.content.ClipData;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Path;
 import android.os.Handler;
 import android.os.Looper;
@@ -14,18 +15,21 @@ import android.view.accessibility.AccessibilityNodeInfo;
 
 public class RCBDAccessibilityService extends AccessibilityService {
     private static RCBDAccessibilityService instancia;
+    private static String modo = "USSD"; // Guarda o pacote do app selecionado
     private String[] dados = new String[4];
     private int passo = 0;
     private boolean executando = false;
     private Handler handler = new Handler(Looper.getMainLooper());
     private Runnable timeout;
 
+    public static void setModo(String m){ modo = m; }
+
     @Override
     protected void onServiceConnected() {
         super.onServiceConnected();
         instancia = this;
         AccessibilityServiceInfo info = new AccessibilityServiceInfo();
-        info.flags = AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS;
+        info.flags = AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS | AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS;
         setServiceInfo(info);
     }
 
@@ -38,14 +42,14 @@ public class RCBDAccessibilityService extends AccessibilityService {
             instancia.executando = true;
             instancia.passo = 0;
             instancia.iniciarTimeout();
-            instancia.handler.postDelayed(() -> instancia.executarFluxo(), 5000);
+            instancia.handler.postDelayed(() -> instancia.executarFluxo(), 3000);
         }
     }
 
     private void iniciarTimeout(){
         if(timeout!= null) handler.removeCallbacks(timeout);
         timeout = () -> pararExecucao();
-        handler.postDelayed(timeout, 35000);
+        handler.postDelayed(timeout, 40000);
     }
 
     private void pararExecucao(){
@@ -58,6 +62,13 @@ public class RCBDAccessibilityService extends AccessibilityService {
     private void executarFluxo(){
         if(!executando) return;
 
+        // MUDANÇA: Se não for USSD, abre qualquer app selecionado
+        if(!modo.equals("USSD")){
+            abrirAppEColar();
+            return;
+        }
+
+        // FLUXO USSD ANTIGO - MANTIDO
         if(passo < 4){
             int delay = 2000;
             if(passo == 1) delay = 5000;
@@ -72,11 +83,36 @@ public class RCBDAccessibilityService extends AccessibilityService {
         } else {
             handler.postDelayed(() -> {
                 clicarPorTexto("OK", "Enviar", "Ligar", "Próximo", "→", "Next", "Send", "CONFIRMAR");
-                // Se não clicou em nada, aperta ENTER
                 handler.postDelayed(() -> apertarEnter(), 200);
                 pararExecucao();
             }, 300);
         }
+    }
+
+    // MUDANÇA: METODO AGORA ABRE QUALQUER APP PELO PACOTE
+    private void abrirAppEColar(){
+        String pacote = modo;
+        String mensagem = "MB: " + dados[2] + " | Numero: " + dados[3];
+
+        Intent intent = getPackageManager().getLaunchIntentForPackage(pacote);
+        if(intent == null){
+            LogManager.registar(this, "ERRO: App nao encontrado: " + pacote);
+            pararExecucao();
+            return;
+        }
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
+
+        handler.postDelayed(() -> {
+            ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+            clipboard.setPrimaryClip(ClipData.newPlainText("rcbd", mensagem));
+            handler.postDelayed(() -> {
+                toqueLongoCentro();
+                handler.postDelayed(() -> clicarPorTexto("COLAR", "PASTE", "Colar"), 500);
+                handler.postDelayed(() -> clicarPorTexto("ENVIAR", "SEND", "→", "Enviar"), 1200);
+                pararExecucao();
+            }, 1000);
+        }, 4000);
     }
 
     private void colarEEnter(String texto, int delay, Runnable proximo){
@@ -88,18 +124,17 @@ public class RCBDAccessibilityService extends AccessibilityService {
             if(node!= null){
                 AccessibilityNodeInfo campo = encontrarCampoEditavel(node);
                 if(campo!= null){
-                    campo.performAction(AccessibilityNodeInfo.ACTION_FOCUS);
+                    campo.performAction(AccessibilityServiceInfo.ACTION_FOCUS);
                     handler.postDelayed(() -> {
                         campo.performAction(AccessibilityNodeInfo.ACTION_PASTE);
                         handler.postDelayed(() -> {
-                            // Tenta clicar em botão, se não achar aperta ENTER
                             clicarPorTexto("OK", "Enviar", "Ligar", "Próximo", "→");
                             handler.postDelayed(() -> apertarEnter(), 200);
                         }, 300);
                     }, 100);
                 } else {
                     toqueLongoCentro();
-                    handler.postDelayed(() -> clicarPorTexto("COLAR","PASTE"), 400);
+                    handler.postDelayed(() -> clicarPorTexto("COLAR","PASTE", "Colar"), 400);
                 }
             }
             handler.postDelayed(proximo, delay);
@@ -108,7 +143,7 @@ public class RCBDAccessibilityService extends AccessibilityService {
 
     private void apertarEnter(){
         Path path = new Path();
-        path.moveTo(540, 1800); // posição do ENTER do teclado
+        path.moveTo(540, 1800);
         GestureDescription.Builder builder = new GestureDescription.Builder();
         builder.addStroke(new GestureDescription.StrokeDescription(path, 0, 100));
         dispatchGesture(builder.build(), null, null);

@@ -1,9 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+    <style name="AppTheme" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#0D0D0D</item>
+        <item name="android:textColor">#E0E0E0</item>
+        <item name="android:textColorHint">#888</item>
+        <item name="android:colorAccent">#00FF88</item>
+        <item name="android:colorPrimary">#121212</item>
+        <item name="android:colorPrimaryDark">#000</item>
         <item name="android:fontFamily">sans</item>
-        <item name="android:colorAccent">#00AA00</item>
     </style>
 
 </resources>

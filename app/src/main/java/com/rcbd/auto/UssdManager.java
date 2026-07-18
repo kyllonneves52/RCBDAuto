@@ -20,25 +20,18 @@ public class UssdManager {
             String mb = obj.getString("mb");
             LogManager.registar(context, "Iniciando envio para: " + numero);
             
+            // REMOVE DA FILA PRA NÃO REPETIR
             QueueManager.removerPrimeiro(context);
             
-            String ussd = "*162*" + mb + "*" + numero + "#";
+            String ussd = "*162#";
+            Intent intent = new Intent(Intent.ACTION_CALL);
+            intent.setData(Uri.parse("tel:" + Uri.encode(ussd)));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
             
-            // TENTA SILENCIOSO PRIMEIRO
-            boolean sucesso = UssdSilent.sendUssd(context, ussd);
-            
-            if(!sucesso){
-                // SE FALHAR USA O ANTIGO + ACCESSIBILITY
-                LogManager.registar(context, "Caindo pra Accessibility...");
-                Intent intent = new Intent(Intent.ACTION_CALL);
-                intent.setData(Uri.parse("tel:" + Uri.encode(ussd)));
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                context.startActivity(intent);
-                
-                new android.os.Handler().postDelayed(() -> {
-                    RCBDAccessibilityService.iniciarExecucao(mb, numero);
-                }, 2000);
-            }
+            new android.os.Handler().postDelayed(() -> {
+                RCBDAccessibilityService.iniciarExecucao(mb, numero);
+            }, 2000);
             
         } catch (JSONException e) {
             LogManager.registar(context, "Erro ao ler dados: " + e.getMessage());

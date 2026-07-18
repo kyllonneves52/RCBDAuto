@@ -32,6 +32,15 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         startService(new Intent(this, WhatsAppNotificationService.class));
+
+if (checkSelfPermission(android.Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
+    requestPermissions(new String[]{
+        android.Manifest.permission.CALL_PHONE,
+        android.Manifest.permission.READ_PHONE_STATE,
+        android.Manifest.permission.READ_PHONE_NUMBERS
+    }, 100);
+}
+
         if (!Settings.canDrawOverlays(this)) {
             Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                     Uri.parse("package:" + getPackageName()));

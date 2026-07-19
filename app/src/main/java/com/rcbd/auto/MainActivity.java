@@ -559,7 +559,7 @@ private void iniciarVerificacaoLicenca(){
 
 
                     // Cancela a verificação
-                    tarefa.cancel();
+                   this.cancel();
 
 
                     Intent i = new Intent(

@@ -6,7 +6,7 @@ import javax.crypto.spec.SecretKeySpec;
 
 public class Crypto {
 
-    private static final String CHAVE = "RCBD@CHAVE2026BR"; // Mesma chave
+    private static final String CHAVE = "RCBD@CHAVE2026BR";
 
     public static String criptografar(String data) {
         try {

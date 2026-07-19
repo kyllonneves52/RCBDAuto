@@ -11,23 +11,24 @@ public class LicenseManager {
     // COLOCAR ID DO CLIENTE ANTES DE COMPILAR
     private static final String ANDROID_ID_PERMITIDO = "31db07671355a14a";
 
-    // PLANO COMPRADO - AGORA TEM HORAS E MINUTOS PRA TESTAR
-    private static final int DIAS_PLANO = 0; // 0 pra teste
-    private static final int HORAS_PLANO = 1; // 1 HORA PRA TESTAR
-    private static final int MINUTOS_PLANO = 0; // 0
+    // PLANO DE 1 HORA
+    private static final int DIAS_PLANO = 0;
+    private static final int HORAS_PLANO = 1;
+    private static final int MINUTOS_PLANO = 0;
 
     public static boolean verificar(Context context){
         String id = Settings.Secure.getString(context.getContentResolver(), Settings.Secure.ANDROID_ID);
 
+        // 1. CHECA ID
         if(!ANDROID_ID_PERMITIDO.equals(id)){
             return false;
         }
 
-        String licencaCrip = LicenseStorage.lerLicenca();
+        String licencaCrip = LicenseStorage.lerLicenca(context);
         long agoraMillis = System.currentTimeMillis();
 
+        // 2. SE NÃO TEM ARQUIVO, CRIA E LIBERA
         if(licencaCrip == null){
-            // PRIMEIRA VEZ: CRIA O ARQUIVO CRIPTOGRAFADO
             long tempoTotal = (DIAS_PLANO * 86400000L) + (HORAS_PLANO * 3600000L) + (MINUTOS_PLANO * 60000L);
             long dataFinal = agoraMillis + tempoTotal;
 
@@ -35,14 +36,13 @@ public class LicenseManager {
                           "DATA_FINAL="+dataFinal+"\n"+
                           "ULTIMA_DATA="+agoraMillis;
 
-            LicenseStorage.criarSeNaoExistir(Crypto.criptografar(nova));
+            LicenseStorage.criarSeNaoExistir(context, Crypto.criptografar(nova));
             return true;
         }
 
         try {
-            // DESCRIPTOGRAFA PRA LER
+            // 3. DESCRIPTOGRAFA E CHECA
             String licenca = Crypto.descriptografar(licencaCrip);
-
             long dataFinal = extrairLong(licenca, "DATA_FINAL=");
             long ultimaData = extrairLong(licenca, "ULTIMA_DATA=");
 
@@ -55,11 +55,11 @@ public class LicenseManager {
                 return false; // Expirou
             }
 
-            // ATUALIZA E CRIPTOGRAFA DE NOVO
+            // 4. ATUALIZA E CRIPTOGRAFA DE NOVO
             String nova = "ANDROID_ID="+id+"\n"+
                           "DATA_FINAL="+dataFinal+"\n"+
                           "ULTIMA_DATA="+agoraMillis;
-            LicenseStorage.atualizarTodos(Crypto.criptografar(nova));
+            LicenseStorage.atualizarTodos(context, Crypto.criptografar(nova));
             return true;
 
         } catch(Exception e){
@@ -68,10 +68,10 @@ public class LicenseManager {
     }
 
     // PRA MOSTRAR NA TELA: 00d 00h 04m 32s
-    public static String getTempoRestante(){
+    public static String getTempoRestante(Context context){
         try {
-            String licencaCrip = LicenseStorage.lerLicenca();
-            if(licencaCrip == null) return "Sem licença";
+            String licencaCrip = LicenseStorage.lerLicenca(context);
+            if(licencaCrip == null) return "Ativando...";
 
             String licenca = Crypto.descriptografar(licencaCrip);
             long dataFinal = extrairLong(licenca, "DATA_FINAL=");
@@ -90,12 +90,12 @@ public class LicenseManager {
     }
 
     // PRA MOSTRAR DATA FINAL
-    public static String getDataValidade(){
+    public static String getDataValidade(Context context){
         try {
-            String licencaCrip = LicenseStorage.lerLicenca();
+            String licencaCrip = LicenseStorage.lerLicenca(context);
             String licenca = Crypto.descriptografar(licencaCrip);
             long dataFinal = extrairLong(licenca, "DATA_FINAL=");
-            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault());
+            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
             return sdf.format(new Date(dataFinal));
         } catch(Exception e){ return "Erro"; }
     }

@@ -1,49 +1,104 @@
 package com.rcbd.auto;
 
 import android.content.Context;
+import android.os.Environment;
+
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileWriter;
+import java.io.FileOutputStream;
 
 public class LicenseStorage {
 
-    private static File getArquivo(Context context) {
-        File pasta = new File(context.getFilesDir(), ".rcbd");
+    private static final String PASTA = "RCBDAuto";
+    private static final String ARQUIVO = "license.sys";
+
+
+    private static File getArquivo(){
+
+        File pasta = new File(
+                Environment.getExternalStorageDirectory(),
+                PASTA
+        );
+
         if(!pasta.exists()){
             pasta.mkdirs();
         }
-        return new File(pasta, "license.sys");
+
+        return new File(pasta, ARQUIVO);
     }
 
-    public static void criarSeNaoExistir(Context context, String conteudo) {
-        File f = getArquivo(context);
+
+    public static boolean existe(){
+
+        return getArquivo().exists();
+
+    }
+
+
+    public static void salvar(String conteudo){
+
         try{
-            if(!f.exists()){
-                FileWriter fw = new FileWriter(f);
-                fw.write(conteudo);
-                fw.close();
+
+            FileOutputStream fos =
+                    new FileOutputStream(
+                            getArquivo(),
+                            false
+                    );
+
+            fos.write(
+                    conteudo.getBytes("UTF-8")
+            );
+
+            fos.close();
+
+
+        }catch(Exception e){
+
+            e.printStackTrace();
+
+        }
+
+    }
+
+
+    public static String ler(){
+
+        try{
+
+            File arquivo = getArquivo();
+
+            if(!arquivo.exists()){
+                return null;
             }
-        }catch(Exception e){ e.printStackTrace(); }
-    }
 
-    public static void atualizarTodos(Context context, String conteudo){
-        File f = getArquivo(context);
-        try{
-            FileWriter fw = new FileWriter(f,false);
-            fw.write(conteudo);
-            fw.close();
-        }catch(Exception e){ e.printStackTrace(); }
-    }
 
-    public static String lerLicenca(Context context){
-        try{
-            File f = getArquivo(context);
-            if(!f.exists()){ return null; }
-            FileInputStream fis = new FileInputStream(f);
-            byte[] dados = new byte[(int)f.length()];
+            FileInputStream fis =
+                    new FileInputStream(
+                            arquivo
+                    );
+
+
+            byte[] dados =
+                    new byte[(int)arquivo.length()];
+
+
             fis.read(dados);
+
             fis.close();
-            return new String(dados);
-        }catch(Exception e){ return null; }
+
+
+            return new String(
+                    dados,
+                    "UTF-8"
+            );
+
+
+        }catch(Exception e){
+
+            return null;
+
+        }
+
     }
+
 }

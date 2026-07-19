@@ -9,16 +9,13 @@ import android.content.pm.ResolveInfo;
 import android.net.Uri;
 import android.provider.Settings;
 import android.view.View;
-import android.widget.AdapterView; // CERTO
+import android.widget.AdapterView;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 import android.os.Build;
 import android.os.Environment;
-// APAGUEI OS 2 IMPORTS DE SUPPORT
-// import android.support.v4.app.ActivityCompat;
-// import android.support.v4.content.ContextCompat;
 
 public class MainActivity extends Activity {
 
@@ -68,19 +65,20 @@ public class MainActivity extends Activity {
         log = findViewById(R.id.log);
         spinnerApp = findViewById(R.id.spinnerApp);
         
-        checkAndRequestPermissions(); // <- 2. PEDE PERMISSÃO CORRETA
+        checkAndRequestPermissions();
 
         carregarListaApps();
         enviar.setEnabled(true);
         atualizarEstado();
 
-        licenca.setText("Validade: " + LicenseManager.getTempoRestante());
+        // 2. JÁ ARRUMADO COM THIS
+        licenca.setText("Validade: " + LicenseManager.getTempoRestante(this));
 
         // 3. ATUALIZA O CONTADOR A CADA 1 SEGUNDO
         new Timer().scheduleAtFixedRate(new TimerTask() {
             @Override public void run() {
                 runOnUiThread(() -> {
-                    licenca.setText("Validade: " + LicenseManager.getTempoRestante());
+                    licenca.setText("Validade: " + LicenseManager.getTempoRestante(MainActivity.this));
                 });
             }
         }, 0, 1000);
@@ -101,24 +99,27 @@ public class MainActivity extends Activity {
             mb.setText("");
             numero.setText("");
         });
+        
         atualizar.setOnClickListener(v -> atualizarEstado());
+        
         diagnostico.setOnClickListener(v -> {
             log.setText("Diagnóstico iniciado...");
             status.setText(StatusManager.verificar(this) + "\nModo: " + modoApp);
+            // 4. OPCIONAL: MOSTRAR INFO COMPLETA DA LICENÇA
+            // log.setText(LicenseInfo.mostrar(this));
         });
+        
         permissoes.setOnClickListener(v -> PermissionManager.abrirAcessibilidade(this));
-    } // fecha onCreate
+    }
 
     private void checkAndRequestPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            // Android 11+
             if (!Environment.isExternalStorageManager()) {
                 Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
                 intent.setData(Uri.parse("package:" + getPackageName()));
                 startActivity(intent);
             }
         } else {
-            // Android 10-  <- AQUI MUDEI. SEM ContextCompat e ActivityCompat
             if (checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
                 requestPermissions(new String[]{
                     android.Manifest.permission.WRITE_EXTERNAL_STORAGE, 
@@ -163,7 +164,6 @@ public class MainActivity extends Activity {
         log.setText("RCBDAuto iniciado - Modo: " + modoApp);
     }
 
-    // PRECISA DISSO PRA PEGAR O RESULTADO DA PERMISSÃO NO ANDROID 10-
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);

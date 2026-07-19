@@ -16,8 +16,8 @@ import java.util.Timer;
 import java.util.TimerTask;
 import android.os.Build;
 import android.os.Environment;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 
 public class MainActivity extends Activity {
 

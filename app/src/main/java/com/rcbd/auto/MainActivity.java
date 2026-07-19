@@ -11,6 +11,10 @@ import android.provider.Settings;
 import android.view.View;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 public class MainActivity extends Activity {
 
@@ -23,6 +27,7 @@ public class MainActivity extends Activity {
     TextView status;
     TextView fila;
     TextView log;
+    TextView licenca;
     Spinner spinnerApp;
     String modoApp = "USSD";
     ArrayList<String> listaPacotes = new ArrayList<>();
@@ -30,13 +35,24 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // 1. VERIFICA LICENÇA AQUI PRIMEIRO
+        if(!LicenseManager.verificar(this)){
+            Toast.makeText(this, "Licença expirada ou dispositivo não autorizado", Toast.LENGTH_LONG).show();
+            finish();
+            return;
+        }
+
         setContentView(R.layout.activity_main);
+
         startService(new Intent(this, WhatsAppNotificationService.class));
+
         if (!Settings.canDrawOverlays(this)) {
-            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                    Uri.parse("package:" + getPackageName()));
+            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()));
             startActivityForResult(intent, 100);
         }
+
+        licenca = findViewById(R.id.licenca);
         mb = findViewById(R.id.mb);
         numero = findViewById(R.id.numero);
         enviar = findViewById(R.id.enviar);
@@ -47,9 +63,24 @@ public class MainActivity extends Activity {
         fila = findViewById(R.id.fila);
         log = findViewById(R.id.log);
         spinnerApp = findViewById(R.id.spinnerApp);
+        
+        pedirPermissaoStorage(); // <- 2. PEDE PERMISSÃO PRA CRIAR O ARQUIVO
+
         carregarListaApps();
         enviar.setEnabled(true);
         atualizarEstado();
+
+        licenca.setText("Validade: " + LicenseManager.getTempoRestante());
+
+        // 3. ATUALIZA O CONTADOR A CADA 1 SEGUNDO
+        new Timer().scheduleAtFixedRate(new TimerTask() {
+            @Override public void run() {
+                runOnUiThread(() -> {
+                    licenca.setText("Validade: " + LicenseManager.getTempoRestante());
+                });
+            }
+        }, 0, 1000); // atualiza a cada 1 seg
+
         enviar.setOnClickListener(v -> {
             String pacoteMB = mb.getText().toString().trim();
             String tel = numero.getText().toString().trim().replace(" ", "");
@@ -72,6 +103,20 @@ public class MainActivity extends Activity {
             status.setText(StatusManager.verificar(this) + "\nModo: " + modoApp);
         });
         permissoes.setOnClickListener(v -> PermissionManager.abrirAcessibilidade(this));
+    } // fecha onCreate
+
+    private void pedirPermissaoStorage() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            // Android 13+
+            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_MEDIA_FILES) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.READ_MEDIA_FILES}, 200);
+            }
+        } else {
+            // Android 6 a 12
+            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.READ_EXTERNAL_STORAGE, android.Manifest.permission.WRITE_EXTERNAL_STORAGE}, 200);
+            }
+        }
     }
 
     private void carregarListaApps(){

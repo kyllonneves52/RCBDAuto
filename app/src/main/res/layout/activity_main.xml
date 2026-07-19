@@ -21,6 +21,17 @@
             android:letterSpacing="0.1"
             android:paddingBottom="20dp"/>
 
+<TextView
+    android:id="@+id/licenca"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:text="A verificar licença..."
+    android:textSize="14sp"
+    android:textColor="#00FF88"
+    android:background="#1A1A1A"
+    android:padding="12dp"
+    android:layout_marginBottom="16dp"/>
+
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

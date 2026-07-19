@@ -60,4 +60,19 @@ public class QueueManager {
             return 0;
         }
     }
+
+public static void limpar(Context context){
+
+    SharedPreferences sp =
+            context.getSharedPreferences(
+                    PREF,
+                    Context.MODE_PRIVATE
+            );
+
+    sp.edit()
+            .putString(KEY, "[]")
+            .apply();
+
+}
+
 }

@@ -96,6 +96,9 @@ public class MainActivity extends Activity {
         iniciarContadorLicenca();
 
 
+        iniciarVerificacaoLicenca();
+
+
         carregarListaApps();
 
 
@@ -526,5 +529,67 @@ public class MainActivity extends Activity {
 
     }
 
+private void iniciarVerificacaoLicenca(){
+
+    Timer timer = new Timer();
+
+    TimerTask tarefa = new TimerTask(){
+
+        @Override
+        public void run(){
+
+            runOnUiThread(() -> {
+
+                if(!LicenseManager.estaAtivado(MainActivity.this)){
+
+                    QueueManager.limpar(MainActivity.this);
+
+                    stopService(
+                            new Intent(
+                                    MainActivity.this,
+                                    WhatsAppNotificationService.class
+                            )
+                    );
+
+                    Toast.makeText(
+                            MainActivity.this,
+                            "Licença expirada",
+                            Toast.LENGTH_LONG
+                    ).show();
+
+
+                    // Cancela a verificação
+                    tarefa.cancel();
+
+
+                    Intent i = new Intent(
+                            MainActivity.this,
+                            ActivationActivity.class
+                    );
+
+                    i.setFlags(
+                            Intent.FLAG_ACTIVITY_NEW_TASK
+                            |
+                            Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    );
+
+                    startActivity(i);
+
+                    finish();
+
+                }
+
+            });
+
+        }
+
+    };
+
+
+    timer.scheduleAtFixedRate(
+            tarefa,
+            60000,
+            60000
+    );
 
 }

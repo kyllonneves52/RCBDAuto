@@ -12,7 +12,7 @@ import javax.crypto.spec.SecretKeySpec;
 public class LicenseManager {
 
     // COLOCAR ID DO CLIENTE ANTES DE COMPILAR
-    private static final String ANDROID_ID_PERMITIDO = "COLOQUE_ID";
+    private static final String ANDROID_ID_PERMITIDO = "31db07671355a14a";
 
     // PLANO COMPRADO - AGORA TEM HORAS E MINUTOS PRA TESTAR
     private static final int DIAS_PLANO = 0; // 0 pra teste

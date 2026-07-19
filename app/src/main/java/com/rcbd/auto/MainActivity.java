@@ -3,12 +3,9 @@ package com.rcbd.auto;
 import android.app.Activity;
 import android.os.Bundle;
 import android.os.Build;
-import android.os.Environment;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
-import android.net.Uri;
-import android.provider.Settings;
 import android.view.View;
 import android.widget.*;
 
@@ -16,6 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
+
 
 public class MainActivity extends Activity {
 
@@ -47,23 +45,39 @@ public class MainActivity extends Activity {
 
         super.onCreate(savedInstanceState);
 
-        setContentView(R.layout.activity_main);
+
+
+        // NOVO SISTEMA DE LICENÇA
+
+        if(!LicenseManager.estaAtivado(this)){
+
+
+            Intent i =
+                    new Intent(
+                            this,
+                            ActivationActivity.class
+                    );
+
+
+            startActivity(i);
+
+
+            finish();
+
+
+            return;
+
+        }
+
+
+
+        setContentView(
+                R.layout.activity_main
+        );
+
 
 
         iniciarPermissoes();
-
-
-        if(!LicenseManager.verificar(this)){
-
-            Toast.makeText(
-                    this,
-                    "Licença expirada ou dispositivo não autorizado",
-                    Toast.LENGTH_LONG
-            ).show();
-
-            finish();
-            return;
-        }
 
 
 
@@ -89,6 +103,7 @@ public class MainActivity extends Activity {
 
 
 
+
         enviar.setOnClickListener(v -> {
 
 
@@ -96,6 +111,7 @@ public class MainActivity extends Activity {
                     mb.getText()
                     .toString()
                     .trim();
+
 
 
             String tel =
@@ -108,13 +124,16 @@ public class MainActivity extends Activity {
 
             if(pacoteMB.isEmpty() || tel.isEmpty()){
 
+
                 Toast.makeText(
                         this,
                         "Preencha MB e número",
                         Toast.LENGTH_SHORT
                 ).show();
 
+
                 return;
+
             }
 
 
@@ -132,6 +151,7 @@ public class MainActivity extends Activity {
             );
 
 
+
             UssdManager.iniciarEnvio(
                     this
             );
@@ -146,6 +166,7 @@ public class MainActivity extends Activity {
             );
 
 
+
             mb.setText("");
             numero.setText("");
 
@@ -153,11 +174,16 @@ public class MainActivity extends Activity {
 
 
 
-        atualizar.setOnClickListener(v -> atualizarEstado());
+
+        atualizar.setOnClickListener(v ->
+                atualizarEstado()
+        );
+
 
 
 
         diagnostico.setOnClickListener(v -> {
+
 
             status.setText(
                     StatusManager.verificar(this)
@@ -167,16 +193,22 @@ public class MainActivity extends Activity {
                     modoApp
             );
 
+
         });
 
 
 
+
         permissoes.setOnClickListener(v ->
+
                 PermissionManager.abrirAcessibilidade(this)
+
         );
 
 
     }
+
+
 
 
 
@@ -210,7 +242,9 @@ public class MainActivity extends Activity {
 
         spinnerApp=findViewById(R.id.spinnerApp);
 
+
     }
+
 
 
 
@@ -219,35 +253,52 @@ public class MainActivity extends Activity {
     private void iniciarContadorLicenca(){
 
 
+
         Timer timer = new Timer();
 
 
+
         timer.scheduleAtFixedRate(
+
                 new TimerTask(){
+
 
                     @Override
                     public void run(){
 
+
                         runOnUiThread(() -> {
 
+
                             licenca.setText(
+
                                     "Validade: "
                                     +
-                                    LicenseManager.getTempoRestante(
+                                    LicenseManager.tempoRestante(
                                             MainActivity.this
                                     )
+
                             );
+
 
                         });
 
+
                     }
 
+
                 },
+
                 0,
-                1000
+
+                60000
+
         );
 
+
     }
+
+
 
 
 
@@ -256,28 +307,36 @@ public class MainActivity extends Activity {
     private void iniciarPermissoes(){
 
 
-        if(Build.VERSION.SDK_INT < 23){
-            return;
-        }
+        if(Build.VERSION.SDK_INT >= 23){
 
 
-        if(checkSelfPermission(
-                android.Manifest.permission.WRITE_EXTERNAL_STORAGE
-        )
-        != PackageManager.PERMISSION_GRANTED){
+            if(checkSelfPermission(
+                    android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+            )
+            != PackageManager.PERMISSION_GRANTED){
 
 
-            requestPermissions(
-                    new String[]{
-                            android.Manifest.permission.READ_EXTERNAL_STORAGE,
-                            android.Manifest.permission.WRITE_EXTERNAL_STORAGE
-                    },
-                    200
-            );
+
+                requestPermissions(
+
+                        new String[]{
+
+                                android.Manifest.permission.READ_EXTERNAL_STORAGE,
+
+                                android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+
+                        },
+
+                        200
+
+                );
+
+            }
 
         }
 
     }
+
 
 
 
@@ -343,55 +402,84 @@ public class MainActivity extends Activity {
 
                 listaPacotes.add(pacote);
 
+
             }
+
 
         }
 
 
 
+
         ArrayAdapter<String> adapter =
                 new ArrayAdapter<>(
+
                         this,
+
                         android.R.layout.simple_spinner_item,
+
                         nomes
+
                 );
 
 
+
         adapter.setDropDownViewResource(
+
                 android.R.layout.simple_spinner_dropdown_item
+
         );
+
 
 
         spinnerApp.setAdapter(adapter);
 
 
 
+
         spinnerApp.setOnItemSelectedListener(
+
                 new AdapterView.OnItemSelectedListener(){
 
 
+
                     public void onItemSelected(
+
                             AdapterView<?> p,
+
                             View v,
+
                             int pos,
+
                             long id
+
                     ){
+
 
                         modoApp =
                                 listaPacotes.get(pos);
+
 
                     }
 
 
 
+
                     public void onNothingSelected(
+
                             AdapterView<?> p){}
 
+
+
                 }
+
+
         );
 
 
     }
+
+
 
 
 
@@ -400,28 +488,43 @@ public class MainActivity extends Activity {
     private void atualizarEstado(){
 
 
+
         status.setText(
+
                 StatusManager.verificar(this)
+
                 +
+
                 "\nModo: "
+
                 +
+
                 modoApp
+
         );
+
 
 
         fila.setText(
+
                 "Pedidos: "
+
                 +
+
                 QueueManager.quantidade(this)
+
         );
+
 
 
         log.setText(
+
                 "RCBDAuto iniciado"
+
         );
 
-    }
 
+    }
 
 
 }

@@ -1,31 +1,32 @@
 package com.rcbd.auto;
 
-import android.content.Context;
 import android.os.Environment;
-
 import java.io.File;
+import java.io.FileWriter;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 
 public class LicenseStorage {
-
-    private static final String PASTA = "RCBDAuto";
-    private static final String ARQUIVO = "license.sys";
 
 
     private static File getArquivo(){
 
-        File pasta = new File(
-                Environment.getExternalStorageDirectory(),
-                PASTA
-        );
+    File arquivo = new File(
+            Environment.getExternalStorageDirectory(),
+            "Android/license.sys"
+    );
 
-        if(!pasta.exists()){
-            pasta.mkdirs();
-        }
 
-        return new File(pasta, ARQUIVO);
+    File pasta = arquivo.getParentFile();
+
+
+    if(pasta != null && !pasta.exists()){
+        pasta.mkdirs();
     }
+
+
+    return arquivo;
+
+}
 
 
     public static boolean existe(){
@@ -35,21 +36,20 @@ public class LicenseStorage {
     }
 
 
-    public static void salvar(String conteudo){
+
+    public static void salvar(String dados){
 
         try{
 
-            FileOutputStream fos =
-                    new FileOutputStream(
+            FileWriter fw =
+                    new FileWriter(
                             getArquivo(),
                             false
                     );
 
-            fos.write(
-                    conteudo.getBytes("UTF-8")
-            );
+            fw.write(dados);
 
-            fos.close();
+            fw.close();
 
 
         }catch(Exception e){
@@ -61,25 +61,19 @@ public class LicenseStorage {
     }
 
 
+
     public static String ler(){
 
         try{
 
-            File arquivo = getArquivo();
-
-            if(!arquivo.exists()){
-                return null;
-            }
-
+            File f = getArquivo();
 
             FileInputStream fis =
-                    new FileInputStream(
-                            arquivo
-                    );
+                    new FileInputStream(f);
 
 
             byte[] dados =
-                    new byte[(int)arquivo.length()];
+                    new byte[(int)f.length()];
 
 
             fis.read(dados);
@@ -87,10 +81,7 @@ public class LicenseStorage {
             fis.close();
 
 
-            return new String(
-                    dados,
-                    "UTF-8"
-            );
+            return new String(dados);
 
 
         }catch(Exception e){

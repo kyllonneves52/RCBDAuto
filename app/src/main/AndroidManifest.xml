@@ -36,6 +36,7 @@
         android:allowBackup="false">
 
 
+        <!-- Tela principal -->
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -49,6 +50,12 @@
             </intent-filter>
 
         </activity>
+
+
+        <!-- Tela de ativação da licença -->
+        <activity
+            android:name=".ActivationActivity"
+            android:exported="false"/>
 
 
 

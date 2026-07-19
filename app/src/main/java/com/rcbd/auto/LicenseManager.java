@@ -7,112 +7,76 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
-public class LicenseManager {
 
-    private static final String ANDROID_ID_PERMITIDO =
-            "31db07671355a14a";
+public class LicenseManager {
 
 
     // ALTERAR ANTES DE COMPILAR PARA CADA CLIENTE
-    private static final int DIAS_PLANO = 3;
-    private static final int HORAS_PLANO = 0;
-    private static final int MINUTOS_PLANO = 0;
+
+    private static final String ID_LICENCA =
+            "31DB0767";
+
+    private static final int DIAS_PLANO =
+            3;
+
+    private static final String CODIGO =
+            "AB92";
 
 
-    public static boolean verificar(Context context){
 
-        String id =
-                Settings.Secure.getString(
-                        context.getContentResolver(),
-                        Settings.Secure.ANDROID_ID
-                );
+    public static boolean estaAtivado(Context context){
 
 
-        if(!ANDROID_ID_PERMITIDO.equals(id)){
+        if(!LicenseStorage.existe()){
             return false;
         }
 
 
-        String licenca =
-                LicenseStorage.ler();
-
-
-        long agora =
-                System.currentTimeMillis();
-
-
-
-        // PRIMEIRA INSTALAÇÃO
-        if(licenca == null){
-
-            long validade =
-                    (DIAS_PLANO * 86400000L)
-                    +
-                    (HORAS_PLANO * 3600000L)
-                    +
-                    (MINUTOS_PLANO * 60000L);
-
-
-            long expiracao =
-                    agora + validade;
-
-
-            String nova =
-                    "ANDROID_ID=" + id + "\n" +
-                    "DATA_ATIVACAO=" + agora + "\n" +
-                    "DATA_EXPIRACAO=" + expiracao + "\n" +
-                    "ULTIMA_VERIFICACAO=" + agora;
-
-
-            LicenseStorage.salvar(nova);
-
-
-            return true;
-
-        }
-
-
-
         try{
 
-            long expiracao =
-                    extrairLong(
-                            licenca,
-                            "DATA_EXPIRACAO="
+
+            String dados =
+                    LicenseStorage.ler();
+
+
+            String idAndroid =
+                    Settings.Secure.getString(
+                            context.getContentResolver(),
+                            Settings.Secure.ANDROID_ID
                     );
 
 
-            long ultima =
-                    extrairLong(
-                            licenca,
-                            "ULTIMA_VERIFICACAO="
+
+            String idGuardado =
+                    pegar(dados,"ID_ANDROID");
+
+            long dataFinal =
+                    Long.parseLong(
+                            pegar(dados,"DATA_FINAL")
                     );
 
 
-            // relógio voltou para trás
-            if(agora < ultima){
+
+            // Verifica se é o mesmo aparelho
+
+            if(!idAndroid.equals(idGuardado)){
                 return false;
             }
 
 
-            // expirou
-            if(agora >= expiracao){
+
+            // Verifica validade
+
+            if(System.currentTimeMillis() >= dataFinal){
+
                 return false;
+
             }
 
-
-            // Atualiza a cada abertura
-            String novo =
-                    atualizarUltima(
-                            licenca,
-                            agora
-                    );
-
-
-            LicenseStorage.salvar(novo);
 
 
             return true;
+
 
 
         }catch(Exception e){
@@ -125,104 +89,195 @@ public class LicenseManager {
 
 
 
-    public static String getTempoRestante(Context context){
+
+
+    public static boolean ativar(
+            Context context,
+            String chave
+    ){
+
 
         try{
 
-            String licenca =
-                    LicenseStorage.ler();
+
+            String[] partes =
+                    chave.split("-");
 
 
-            if(licenca == null){
-                return "Sem licença";
+
+            if(partes.length != 4){
+                return false;
             }
 
 
-            long expiracao =
-                    extrairLong(
-                            licenca,
-                            "DATA_EXPIRACAO="
+
+            if(!partes[0].equals("RCBD")){
+                return false;
+            }
+
+
+
+            String id =
+                    partes[1];
+
+            String dias =
+                    partes[2].replace("D","");
+
+            String codigo =
+                    partes[3];
+
+
+
+            if(!id.equals(ID_LICENCA)){
+                return false;
+            }
+
+
+            if(!dias.equals(
+                    String.valueOf(DIAS_PLANO)
+            )){
+                return false;
+            }
+
+
+            if(!codigo.equals(CODIGO)){
+                return false;
+            }
+
+
+
+
+            String idAndroid =
+                    Settings.Secure.getString(
+                            context.getContentResolver(),
+                            Settings.Secure.ANDROID_ID
                     );
 
 
-            long diff =
-                    expiracao -
+
+            long inicio =
                     System.currentTimeMillis();
 
 
 
-            if(diff <= 0){
-                return "Expirado";
-            }
+            long finalizacao =
+                    inicio +
+                    (DIAS_PLANO * 86400000L);
 
 
-            long dias =
-                    diff / 86400000L;
+
+            String dados =
+
+                    "CHAVE="+chave+"\n"+
+                    "ID_ANDROID="+idAndroid+"\n"+
+                    "DATA_INICIO="+inicio+"\n"+
+                    "DATA_FINAL="+finalizacao;
 
 
-            long horas =
-                    (diff % 86400000L)
-                    /
-                    3600000L;
+
+            LicenseStorage.salvar(dados);
 
 
-            long minutos =
-                    (diff % 3600000L)
-                    /
-                    60000L;
 
+            return true;
 
-            long segundos =
-                    (diff % 60000L)
-                    /
-                    1000L;
-
-
-            return String.format(
-                    Locale.getDefault(),
-                    "%02dd %02dh %02dm %02ds",
-                    dias,
-                    horas,
-                    minutos,
-                    segundos
-            );
 
 
         }catch(Exception e){
 
-            return "Erro";
+            return false;
 
         }
+
 
     }
 
 
 
-    private static long extrairLong(
+
+    public static String tempoRestante(Context context){
+
+
+        try{
+
+
+            String dados =
+                    LicenseStorage.ler();
+
+
+            long fim =
+                    Long.parseLong(
+                            pegar(dados,"DATA_FINAL")
+                    );
+
+
+
+            long restante =
+                    fim -
+                    System.currentTimeMillis();
+
+
+
+            if(restante <= 0){
+
+                return "EXPIRADO";
+
+            }
+
+
+
+            long dias =
+                    restante / 86400000;
+
+
+            long horas =
+                    (restante % 86400000) / 3600000;
+
+
+            long minutos =
+                    (restante % 3600000) / 60000;
+
+
+
+            return dias+" dias "
+                    +horas+" horas "
+                    +minutos+" minutos";
+
+
+
+        }catch(Exception e){
+
+            return "ERRO";
+
+        }
+
+
+    }
+
+
+
+
+    private static String pegar(
             String texto,
             String chave
     ){
 
-        String valor =
-                texto.split(chave)[1]
-                .split("\n")[0];
+
+        for(String linha :
+                texto.split("\n")){
 
 
-        return Long.parseLong(valor);
+            if(linha.startsWith(chave)){
 
-    }
+                return linha
+                        .replace(chave+"=","");
+
+            }
+
+        }
 
 
-
-    private static String atualizarUltima(
-            String texto,
-            long novaData
-    ){
-
-        return texto.replaceAll(
-                "ULTIMA_VERIFICACAO=.*",
-                "ULTIMA_VERIFICACAO=" + novaData
-        );
+        return "";
 
     }
 

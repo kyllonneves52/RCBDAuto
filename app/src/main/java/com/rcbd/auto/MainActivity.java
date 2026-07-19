@@ -16,8 +16,9 @@ import java.util.Timer;
 import java.util.TimerTask;
 import android.os.Build;
 import android.os.Environment;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
+// APAGUEI OS 2 IMPORTS DE SUPPORT
+// import android.support.v4.app.ActivityCompat;
+// import android.support.v4.content.ContextCompat;
 
 public class MainActivity extends Activity {
 
@@ -117,9 +118,12 @@ public class MainActivity extends Activity {
                 startActivity(intent);
             }
         } else {
-            // Android 10-
-            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE, android.Manifest.permission.READ_EXTERNAL_STORAGE}, 200);
+            // Android 10-  <- AQUI MUDEI. SEM ContextCompat e ActivityCompat
+            if (checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{
+                    android.Manifest.permission.WRITE_EXTERNAL_STORAGE, 
+                    android.Manifest.permission.READ_EXTERNAL_STORAGE
+                }, 200);
             }
         }
     }
@@ -157,5 +161,14 @@ public class MainActivity extends Activity {
         status.setText(StatusManager.verificar(this) + "\nModo: " + modoApp);
         fila.setText("Pedidos: " + QueueManager.quantidade(this));
         log.setText("RCBDAuto iniciado - Modo: " + modoApp);
+    }
+
+    // PRECISA DISSO PRA PEGAR O RESULTADO DA PERMISSÃO NO ANDROID 10-
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == 200) {
+            log.setText("Permissão de Storage respondida");
+        }
     }
 }

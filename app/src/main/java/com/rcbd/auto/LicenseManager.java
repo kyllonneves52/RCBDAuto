@@ -161,8 +161,8 @@ public class LicenseManager {
 
 
             long finalizacao =
-                    inicio +
-                    (DIAS_PLANO * 86400000L);
+        inicio +
+        (10 * 60 * 1000L);
 
 
 

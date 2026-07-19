@@ -9,7 +9,7 @@ import android.content.pm.ResolveInfo;
 import android.net.Uri;
 import android.provider.Settings;
 import android.view.View;
-import android.view.AdapterView;
+import android.widget.AdapterView; // CERTO
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Timer;

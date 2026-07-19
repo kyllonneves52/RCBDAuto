@@ -9,10 +9,13 @@ import android.content.pm.ResolveInfo;
 import android.net.Uri;
 import android.provider.Settings;
 import android.view.View;
+import android.view.AdapterView;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
+import android.os.Build;
+import android.os.Environment;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
@@ -64,7 +67,7 @@ public class MainActivity extends Activity {
         log = findViewById(R.id.log);
         spinnerApp = findViewById(R.id.spinnerApp);
         
-        pedirPermissaoStorage(); // <- 2. PEDE PERMISSÃO PRA CRIAR O ARQUIVO
+        checkAndRequestPermissions(); // <- 2. PEDE PERMISSÃO CORRETA
 
         carregarListaApps();
         enviar.setEnabled(true);
@@ -79,7 +82,7 @@ public class MainActivity extends Activity {
                     licenca.setText("Validade: " + LicenseManager.getTempoRestante());
                 });
             }
-        }, 0, 1000); // atualiza a cada 1 seg
+        }, 0, 1000);
 
         enviar.setOnClickListener(v -> {
             String pacoteMB = mb.getText().toString().trim();
@@ -105,16 +108,18 @@ public class MainActivity extends Activity {
         permissoes.setOnClickListener(v -> PermissionManager.abrirAcessibilidade(this));
     } // fecha onCreate
 
-    private void pedirPermissaoStorage() {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            // Android 13+
-            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_MEDIA_FILES) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.READ_MEDIA_FILES}, 200);
+    private void checkAndRequestPermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // Android 11+
+            if (!Environment.isExternalStorageManager()) {
+                Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+                intent.setData(Uri.parse("package:" + getPackageName()));
+                startActivity(intent);
             }
         } else {
-            // Android 6 a 12
+            // Android 10-
             if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.READ_EXTERNAL_STORAGE, android.Manifest.permission.WRITE_EXTERNAL_STORAGE}, 200);
+                ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE, android.Manifest.permission.READ_EXTERNAL_STORAGE}, 200);
             }
         }
     }

@@ -2,12 +2,9 @@ package com.rcbd.auto;
 
 import android.content.Context;
 import android.provider.Settings;
-import android.util.Base64;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
-import javax.crypto.Cipher;
-import javax.crypto.spec.SecretKeySpec;
 
 public class LicenseManager {
 
@@ -16,10 +13,8 @@ public class LicenseManager {
 
     // PLANO COMPRADO - AGORA TEM HORAS E MINUTOS PRA TESTAR
     private static final int DIAS_PLANO = 0; // 0 pra teste
-    private static final int HORAS_PLANO = 0; // 0 pra teste
-    private static final int MINUTOS_PLANO = 30; // 30 MINUTOS PRA TESTAR
-
-    private static final String CHAVE = "RCBD@CHAVE2026BR"; // Chave pra criptografar
+    private static final int HORAS_PLANO = 1; // 1 HORA PRA TESTAR
+    private static final int MINUTOS_PLANO = 0; // 0
 
     public static boolean verificar(Context context){
         String id = Settings.Secure.getString(context.getContentResolver(), Settings.Secure.ANDROID_ID);
@@ -40,13 +35,13 @@ public class LicenseManager {
                           "DATA_FINAL="+dataFinal+"\n"+
                           "ULTIMA_DATA="+agoraMillis;
 
-            LicenseStorage.criarSeNaoExistir(criptografar(nova));
+            LicenseStorage.criarSeNaoExistir(Crypto.criptografar(nova));
             return true;
         }
 
         try {
             // DESCRIPTOGRAFA PRA LER
-            String licenca = descriptografar(licencaCrip);
+            String licenca = Crypto.descriptografar(licencaCrip);
 
             long dataFinal = extrairLong(licenca, "DATA_FINAL=");
             long ultimaData = extrairLong(licenca, "ULTIMA_DATA=");
@@ -64,7 +59,7 @@ public class LicenseManager {
             String nova = "ANDROID_ID="+id+"\n"+
                           "DATA_FINAL="+dataFinal+"\n"+
                           "ULTIMA_DATA="+agoraMillis;
-            LicenseStorage.atualizarTodos(criptografar(nova));
+            LicenseStorage.atualizarTodos(Crypto.criptografar(nova));
             return true;
 
         } catch(Exception e){
@@ -78,7 +73,7 @@ public class LicenseManager {
             String licencaCrip = LicenseStorage.lerLicenca();
             if(licencaCrip == null) return "Sem licença";
 
-            String licenca = descriptografar(licencaCrip);
+            String licenca = Crypto.descriptografar(licencaCrip);
             long dataFinal = extrairLong(licenca, "DATA_FINAL=");
             long diff = dataFinal - System.currentTimeMillis();
 
@@ -98,27 +93,11 @@ public class LicenseManager {
     public static String getDataValidade(){
         try {
             String licencaCrip = LicenseStorage.lerLicenca();
-            String licenca = descriptografar(licencaCrip);
+            String licenca = Crypto.descriptografar(licencaCrip);
             long dataFinal = extrairLong(licenca, "DATA_FINAL=");
             SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault());
             return sdf.format(new Date(dataFinal));
         } catch(Exception e){ return "Erro"; }
-    }
-
-    private static String criptografar(String data) {
-        try {
-            SecretKeySpec skey = new SecretKeySpec(CHAVE.getBytes(), "AES");
-            Cipher cipher = Cipher.getInstance("AES");
-            cipher.init(Cipher.ENCRYPT_MODE, skey);
-            return Base64.encodeToString(cipher.doFinal(data.getBytes()), Base64.DEFAULT);
-        } catch(Exception e){ return ""; }
-    }
-
-    private static String descriptografar(String data) throws Exception {
-        SecretKeySpec skey = new SecretKeySpec(CHAVE.getBytes(), "AES");
-        Cipher cipher = Cipher.getInstance("AES");
-        cipher.init(Cipher.DECRYPT_MODE, skey);
-        return new String(cipher.doFinal(Base64.decode(data, Base64.DEFAULT)));
     }
 
     private static long extrairLong(String texto, String chave){

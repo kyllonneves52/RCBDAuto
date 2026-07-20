@@ -1,0 +1,2259 @@
+========== ./app/src/main/java/com/rcbd/auto/CommandParser.java ==========
+package com.rcbd.auto;
+
+import android.content.Context;
+
+public class CommandParser {
+
+    public static boolean processar(Context context, String mensagem) {
+
+        try {
+            mensagem = mensagem.trim().toLowerCase();
+
+            String[] partes = mensagem.split(" ");
+
+            if(partes.length < 3){
+                return false;
+            }
+
+            String comando = partes[0];
+
+            // ACEITA.mandar
+            if(!comando.equals(".mandar")){
+                return false;
+            }
+
+            // Pega MB e tira o "mb" se tiver
+            String mb = partes[1].replace("mb", "").replace("MB", "").trim();
+            String numero = partes[2].replace(" ", "").trim();
+
+            QueueManager.adicionar(
+                    context,
+                    mb,
+                    numero
+            );
+
+            LogManager.registar(context, "Comando adicionado: " + mb + "MB para " + numero);
+            return true;
+
+        } catch(Exception e){
+            e.printStackTrace();
+            LogManager.registar(context, "Erro CommandParser: " + e.getMessage());
+            return false;
+        }
+    }
+}
+========== ./app/src/main/java/com/rcbd/auto/ActivationActivity.java ==========
+package com.rcbd.auto;
+
+import android.app.Activity;
+import android.os.Bundle;
+import android.content.Intent;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.Toast;
+
+
+public class ActivationActivity extends Activity {
+
+
+    EditText chave;
+    Button ativar;
+
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+
+        super.onCreate(savedInstanceState);
+
+        setContentView(R.layout.activity_activation);
+
+
+
+        chave = findViewById(R.id.chave);
+        ativar = findViewById(R.id.ativar);
+
+
+
+        ativar.setOnClickListener(v -> {
+
+
+            String codigo =
+                    chave.getText()
+                    .toString()
+                    .trim()
+                    .toUpperCase();
+
+
+
+            boolean resultado =
+                    LicenseManager.ativar(
+                            this,
+                            codigo
+                    );
+
+
+
+            if(resultado){
+
+
+                Toast.makeText(
+                        this,
+                        "Licença ativada com sucesso",
+                        Toast.LENGTH_LONG
+                ).show();
+
+
+
+                Intent i =
+                        new Intent(
+                                this,
+                                MainActivity.class
+                        );
+
+
+                startActivity(i);
+
+                finish();
+
+
+
+            }else{
+
+
+                Toast.makeText(
+                        this,
+                        "Chave inválida",
+                        Toast.LENGTH_LONG
+                ).show();
+
+
+            }
+
+
+
+        });
+
+
+    }
+
+
+}
+
+========== ./app/src/main/java/com/rcbd/auto/UssdManager.java ==========
+package com.rcbd.auto;
+
+import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
+import org.json.JSONObject;
+import org.json.JSONException;
+
+public class UssdManager {
+
+    public static void iniciarEnvio(Context context){
+
+        // BLOQUEIA O USSD SE A LICENÇA NÃO FOR VÁLIDA
+        if(!LicenseManager.estaAtivado(context)){
+            QueueManager.limpar(context);
+            LogManager.registar(context, "Licença expirada. USSD bloqueado.");
+            return;
+        }
+
+        JSONObject obj = QueueManager.pegarProximo(context);
+
+        if(obj == null){
+            LogManager.registar(context, "Fila vazia");
+            return;
+        }
+
+        try {
+
+            String numero = obj.getString("numero");
+            String mb = obj.getString("mb");
+
+            LogManager.registar(context, "Iniciando envio para: " + numero);
+
+            // REMOVE DA FILA PARA NÃO REPETIR
+            QueueManager.removerPrimeiro(context);
+
+            String ussd = "*162#";
+
+            Intent intent = new Intent(Intent.ACTION_CALL);
+            intent.setData(Uri.parse("tel:" + Uri.encode(ussd)));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+            context.startActivity(intent);
+
+            new android.os.Handler().postDelayed(() -> {
+
+                // CONFERE NOVAMENTE ANTES DE EXECUTAR
+                if(LicenseManager.estaAtivado(context)){
+                    RCBDAccessibilityService.iniciarExecucao(mb, numero);
+                }else{
+                    QueueManager.limpar(context);
+                    LogManager.registar(context, "Licença expirou durante o envio.");
+                }
+
+            }, 2000);
+
+        } catch (JSONException e) {
+
+            LogManager.registar(context, "Erro ao ler dados: " + e.getMessage());
+
+        }
+
+    }
+
+}
+========== ./app/src/main/java/com/rcbd/auto/Config.java ==========
+package com.rcbd.auto;
+
+import android.content.Context;
+import android.content.SharedPreferences;
+
+public class Config {
+
+    private static final String PREF = "RCBD_CONFIG";
+
+    private static final String MB = "mb_atual";
+    private static final String NUMERO = "numero_atual";
+
+
+    public static void salvarPedidoAtual(
+            Context context,
+            String mb,
+            String numero
+    ){
+
+        SharedPreferences sp =
+                context.getSharedPreferences(
+                        PREF,
+                        Context.MODE_PRIVATE
+                );
+
+
+        sp.edit()
+                .putString(MB, mb)
+                .putString(NUMERO, numero)
+                .apply();
+    }
+
+
+
+    public static String getMB(Context context){
+
+        SharedPreferences sp =
+                context.getSharedPreferences(
+                        PREF,
+                        Context.MODE_PRIVATE
+                );
+
+        return sp.getString(MB, "");
+    }
+
+
+
+    public static String getNumero(Context context){
+
+        SharedPreferences sp =
+                context.getSharedPreferences(
+                        PREF,
+                        Context.MODE_PRIVATE
+                );
+
+        return sp.getString(NUMERO, "");
+    }
+
+}
+
+========== ./app/src/main/java/com/rcbd/auto/LogManager.java ==========
+package com.rcbd.auto;
+
+import android.content.Context;
+
+import java.io.FileOutputStream;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+
+
+public class LogManager {
+
+
+    private static final String ARQUIVO =
+            "rcbd_logs.txt";
+
+
+
+    public static void registar(
+            Context context,
+            String mensagem
+    ){
+
+
+        try{
+
+
+            String hora =
+                    new SimpleDateFormat(
+                            "dd/MM/yyyy HH:mm:ss",
+                            Locale.getDefault()
+                    ).format(
+                            new Date()
+                    );
+
+
+
+            String linha =
+                    hora
+                    + " - "
+                    + mensagem
+                    + "\n";
+
+
+
+            FileOutputStream fos =
+                    context.openFileOutput(
+                            ARQUIVO,
+                            Context.MODE_APPEND
+                    );
+
+
+
+            fos.write(
+                    linha.getBytes()
+            );
+
+
+            fos.close();
+
+
+
+        }catch(Exception e){
+
+
+            e.printStackTrace();
+
+
+        }
+
+
+    }
+
+
+
+
+
+    public static String ler(
+            Context context
+    ){
+
+
+        try{
+
+
+            java.io.FileInputStream fis =
+                    context.openFileInput(
+                            ARQUIVO
+                    );
+
+
+            byte[] dados =
+                    new byte[
+                            fis.available()
+                    ];
+
+
+
+            fis.read(dados);
+
+            fis.close();
+
+
+
+            return new String(dados);
+
+
+
+        }catch(Exception e){
+
+
+            return "Sem logs";
+
+
+        }
+
+
+    }
+
+
+}
+
+========== ./app/src/main/java/com/rcbd/auto/StatusManager.java ==========
+package com.rcbd.auto;
+
+import android.accessibilityservice.AccessibilityServiceInfo;
+import android.content.Context;
+import android.content.pm.PackageManager;
+import android.view.accessibility.AccessibilityManager;
+
+import java.util.List;
+
+public class StatusManager {
+
+
+    public static String verificar(Context context){
+
+
+        StringBuilder estado =
+                new StringBuilder();
+
+
+
+        // Aplicação
+
+        estado.append(
+                "🟢 Aplicação ativa\n\n"
+        );
+
+
+
+        // Accessibility
+
+        if(accessibilidadeAtiva(context)){
+
+
+            estado.append(
+                    "🟢 Accessibility ligada\n"
+            );
+
+
+        }else{
+
+
+            estado.append(
+                    "🔴 Accessibility desligada\n"
+            );
+
+        }
+
+
+
+        // CALL PHONE
+
+        if(context.checkSelfPermission(
+                "android.permission.CALL_PHONE"
+        ) == PackageManager.PERMISSION_GRANTED){
+
+
+            estado.append(
+                    "🟢 CALL_PHONE permitido\n"
+            );
+
+
+        }else{
+
+
+            estado.append(
+                    "🔴 CALL_PHONE negado\n"
+            );
+
+        }
+
+
+
+
+        // WhatsApp
+
+        if(instalado(
+                context,
+                "com.whatsapp"
+        )){
+
+
+            estado.append(
+                    "🟢 WhatsApp instalado\n"
+            );
+
+
+        }else{
+
+
+            estado.append(
+                    "🔴 WhatsApp não encontrado\n"
+            );
+
+
+        }
+
+
+
+
+        // WhatsApp Business
+
+        if(instalado(
+                context,
+                "com.whatsapp.w4b"
+        )){
+
+
+            estado.append(
+                    "🟢 WhatsApp Business instalado\n"
+            );
+
+
+        }else{
+
+
+            estado.append(
+                    "🔴 WhatsApp Business não encontrado\n"
+            );
+
+        }
+
+
+
+        estado.append(
+                "🟡 USSD: pronto para teste\n"
+        );
+
+
+
+        estado.append(
+                "🟡 Notification Listener: próximo módulo\n"
+        );
+
+
+
+        estado.append(
+                "🟡 Boot: próximo módulo\n"
+        );
+
+
+
+        return estado.toString();
+
+    }
+
+
+
+
+
+
+    private static boolean instalado(
+            Context context,
+            String pacote
+    ){
+
+        try{
+
+
+            context.getPackageManager()
+                    .getPackageInfo(
+                            pacote,
+                            0
+                    );
+
+
+            return true;
+
+
+        }catch(Exception e){
+
+
+            return false;
+
+        }
+
+    }
+
+
+
+
+
+    private static boolean accessibilidadeAtiva(
+            Context context
+    ){
+
+
+        AccessibilityManager manager =
+                (AccessibilityManager)
+                context.getSystemService(
+                        Context.ACCESSIBILITY_SERVICE
+                );
+
+
+
+        if(manager == null){
+            return false;
+        }
+
+
+
+        List<AccessibilityServiceInfo> lista =
+                manager.getEnabledAccessibilityServiceList(
+                        AccessibilityServiceInfo.FEEDBACK_ALL_MASK
+                );
+
+
+
+        for(AccessibilityServiceInfo info: lista){
+
+
+            if(info.getResolveInfo()
+                    .serviceInfo
+                    .packageName
+                    .equals(
+                            context.getPackageName()
+                    )){
+
+
+                return true;
+
+            }
+
+        }
+
+
+        return false;
+
+    }
+
+
+}
+
+========== ./app/src/main/java/com/rcbd/auto/PermissionManager.java ==========
+package com.rcbd.auto;
+
+import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
+import android.provider.Settings;
+
+
+public class PermissionManager {
+
+
+    public static void abrirAcessibilidade(Context context){
+
+        Intent intent =
+                new Intent(
+                        Settings.ACTION_ACCESSIBILITY_SETTINGS
+                );
+
+        context.startActivity(intent);
+
+    }
+
+
+
+    public static void abrirNotificacoes(Context context){
+
+        Intent intent =
+                new Intent(
+                        "android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"
+                );
+
+        context.startActivity(intent);
+
+    }
+
+
+
+    public static boolean temCallPhone(Context context){
+
+        return context.checkSelfPermission(
+                "android.permission.CALL_PHONE"
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+
+    }
+
+
+}
+
+========== ./app/src/main/java/com/rcbd/auto/UssdStateMachine.java ==========
+package com.rcbd.auto;
+
+
+public class UssdStateMachine {
+
+
+    public enum Estado {
+
+        INICIO,
+
+        ABRIR_USSD,
+
+        MENU,
+
+        ENVIAR_8,
+
+        ENVIAR_2,
+
+        ENVIAR_MB,
+
+        ENVIAR_NUMERO,
+
+        CONFIRMAR,
+
+        CONCLUIDO,
+
+        ERRO
+    }
+
+
+
+    private Estado estado = Estado.INICIO;
+
+
+
+    public void iniciar(){
+
+        estado = Estado.ABRIR_USSD;
+
+    }
+
+
+
+    public Estado getEstado(){
+
+        return estado;
+
+    }
+
+
+
+    public void proximo(){
+
+        switch(estado){
+
+
+            case INICIO:
+
+                estado = Estado.ABRIR_USSD;
+
+                break;
+
+
+
+            case ABRIR_USSD:
+
+                estado = Estado.MENU;
+
+                break;
+
+
+
+            case MENU:
+
+                estado = Estado.ENVIAR_8;
+
+                break;
+
+
+
+            case ENVIAR_8:
+
+                estado = Estado.ENVIAR_2;
+
+                break;
+
+
+
+            case ENVIAR_2:
+
+                estado = Estado.ENVIAR_MB;
+
+                break;
+
+
+
+            case ENVIAR_MB:
+
+                estado = Estado.ENVIAR_NUMERO;
+
+                break;
+
+
+
+            case ENVIAR_NUMERO:
+
+                estado = Estado.CONFIRMAR;
+
+                break;
+
+
+
+            case CONFIRMAR:
+
+                estado = Estado.CONCLUIDO;
+
+                break;
+
+
+
+            default:
+
+                estado = Estado.ERRO;
+
+                break;
+
+        }
+
+    }
+
+
+
+    public void erro(){
+
+        estado = Estado.ERRO;
+
+    }
+
+
+
+    public boolean terminou(){
+
+        return estado == Estado.CONCLUIDO;
+
+    }
+
+
+}
+
+========== ./app/src/main/java/com/rcbd/auto/MessageParser.java ==========
+package com.rcbd.auto;
+
+public class MessageParser {
+
+    public static String[] analisarMandar(String mensagem){
+        mensagem = mensagem.trim().toLowerCase();
+
+        if(!mensagem.startsWith(".mandar")){
+            return null;
+        }
+
+        String[] partes = mensagem.split(" ");
+
+        if(partes.length < 3){
+            return null;
+        }
+
+        String mb = partes[1].replace("mb","").trim();
+        String numero = partes[2].replace(" ", "").trim();
+
+        return new String[]{ mb, numero };
+    }
+}
+
+========== ./app/src/main/java/com/rcbd/auto/RCBDAccessibilityService.java ==========
+package com.rcbd.auto;
+
+import android.accessibilityservice.AccessibilityService;
+import android.accessibilityservice.AccessibilityServiceInfo;
+import android.accessibilityservice.GestureDescription;
+import android.content.ClipboardManager;
+import android.content.ClipData;
+import android.content.Context;
+import android.content.Intent;
+import android.graphics.Path;
+import android.os.Handler;
+import android.os.Looper;
+import android.view.accessibility.AccessibilityEvent;
+import android.view.accessibility.AccessibilityNodeInfo;
+
+public class RCBDAccessibilityService extends AccessibilityService {
+    private static RCBDAccessibilityService instancia;
+    private static String modo = "USSD"; // Guarda o pacote do app selecionado
+    private String[] dados = new String[4];
+    private int passo = 0;
+    private boolean executando = false;
+    private Handler handler = new Handler(Looper.getMainLooper());
+    private Runnable timeout;
+
+    public static void setModo(String m){ modo = m; }
+
+    @Override
+    protected void onServiceConnected() {
+        super.onServiceConnected();
+        instancia = this;
+        AccessibilityServiceInfo info = new AccessibilityServiceInfo();
+        info.flags = AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS | AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS;
+        setServiceInfo(info);
+    }
+
+    public static void iniciarExecucao(String mb, String numero){
+        if(instancia!= null){
+            instancia.dados[0] = "8";
+            instancia.dados[1] = "2";
+            instancia.dados[2] = mb;
+            instancia.dados[3] = numero;
+            instancia.executando = true;
+            instancia.passo = 0;
+            instancia.iniciarTimeout();
+            instancia.handler.postDelayed(() -> instancia.executarFluxo(), 3000);
+        }
+    }
+
+    private void iniciarTimeout(){
+        if(timeout!= null) handler.removeCallbacks(timeout);
+        timeout = () -> pararExecucao();
+        handler.postDelayed(timeout, 40000);
+    }
+
+    private void pararExecucao(){
+        executando = false;
+        passo = 0;
+        for(int i=0; i<4; i++) dados[i] = null;
+        if(timeout!= null) handler.removeCallbacks(timeout);
+    }
+
+    private void executarFluxo(){
+        if(!executando) return;
+
+        // MUDANÇA: Se não for USSD, abre qualquer app selecionado
+        if(!modo.equals("USSD")){
+            abrirAppEColar();
+            return;
+        }
+
+        // FLUXO USSD ANTIGO - MANTIDO
+        if(passo < 4){
+            int delay = 2000;
+            if(passo == 1) delay = 5000;
+            if(passo == 2) delay = 5000;
+            if(passo == 3) delay = 4000;
+
+            String texto = dados[passo];
+            colarEEnter(texto, delay, () -> {
+                passo++;
+                handler.postDelayed(() -> executarFluxo(), 500);
+            });
+        } else {
+            handler.postDelayed(() -> {
+                clicarPorTexto("OK", "Enviar", "Ligar", "Próximo", "→", "Next", "Send", "CONFIRMAR");
+                handler.postDelayed(() -> apertarEnter(), 200);
+                pararExecucao();
+            }, 300);
+        }
+    }
+
+    // MUDANÇA: METODO AGORA ABRE QUALQUER APP PELO PACOTE
+    private void abrirAppEColar(){
+        String pacote = modo;
+        String mensagem = "MB: " + dados[2] + " | Numero: " + dados[3];
+
+        Intent intent = getPackageManager().getLaunchIntentForPackage(pacote);
+        if(intent == null){
+            LogManager.registar(this, "ERRO: App nao encontrado: " + pacote);
+            pararExecucao();
+            return;
+        }
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
+
+        handler.postDelayed(() -> {
+            ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+            clipboard.setPrimaryClip(ClipData.newPlainText("rcbd", mensagem));
+            handler.postDelayed(() -> {
+                toqueLongoCentro();
+                handler.postDelayed(() -> clicarPorTexto("COLAR", "PASTE", "Colar"), 500);
+                handler.postDelayed(() -> clicarPorTexto("ENVIAR", "SEND", "→", "Enviar"), 1200);
+                pararExecucao();
+            }, 1000);
+        }, 4000);
+    }
+
+    private void colarEEnter(String texto, int delay, Runnable proximo){
+        ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        clipboard.setPrimaryClip(ClipData.newPlainText("rcbd", texto));
+
+        handler.postDelayed(() -> {
+            AccessibilityNodeInfo node = getRootInActiveWindow();
+            if(node!= null){
+                AccessibilityNodeInfo campo = encontrarCampoEditavel(node);
+                if(campo!= null){
+                    campo.performAction(AccessibilityNodeInfo.ACTION_FOCUS);
+                    handler.postDelayed(() -> {
+                        campo.performAction(AccessibilityNodeInfo.ACTION_PASTE);
+                        handler.postDelayed(() -> {
+                            clicarPorTexto("OK", "Enviar", "Ligar", "Próximo", "→");
+                            handler.postDelayed(() -> apertarEnter(), 200);
+                        }, 300);
+                    }, 100);
+                } else {
+                    toqueLongoCentro();
+                    handler.postDelayed(() -> clicarPorTexto("COLAR","PASTE", "Colar"), 400);
+                }
+            }
+            handler.postDelayed(proximo, delay);
+        }, 200);
+    }
+
+    private void apertarEnter(){
+        Path path = new Path();
+        path.moveTo(540, 1800);
+        GestureDescription.Builder builder = new GestureDescription.Builder();
+        builder.addStroke(new GestureDescription.StrokeDescription(path, 0, 100));
+        dispatchGesture(builder.build(), null, null);
+    }
+
+    private AccessibilityNodeInfo encontrarCampoEditavel(AccessibilityNodeInfo node){
+        if(node == null) return null;
+        if(node.isEditable() && node.isEnabled() && node.isVisibleToUser()){
+            return node;
+        }
+        for(int i=0;i<node.getChildCount();i++){
+            AccessibilityNodeInfo achado = encontrarCampoEditavel(node.getChild(i));
+            if(achado!= null) return achado;
+        }
+        return null;
+    }
+
+    private void clicarPorTexto(String... textos){
+        AccessibilityNodeInfo node = getRootInActiveWindow();
+        if(node == null) return;
+        for(String t : textos){
+            if(clicarRecursivo(node, t.toLowerCase())) break;
+        }
+    }
+
+    private boolean clicarRecursivo(AccessibilityNodeInfo node, String texto){
+        if(node == null) return false;
+        String txt = node.getText()!=null? node.getText().toString().toLowerCase() : "";
+        String desc = node.getContentDescription()!=null? node.getContentDescription().toString().toLowerCase() : "";
+        if(txt.contains(texto) || desc.contains(texto)){
+            node.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+            return true;
+        }
+        for(int i=0;i<node.getChildCount();i++){
+            if(clicarRecursivo(node.getChild(i), texto)) return true;
+        }
+        return false;
+    }
+
+    private void toqueLongoCentro(){
+        Path path = new Path();
+        path.moveTo(600, 1000);
+        GestureDescription.Builder builder = new GestureDescription.Builder();
+        builder.addStroke(new GestureDescription.StrokeDescription(path, 0, 500));
+        dispatchGesture(builder.build(), null, null);
+    }
+
+    @Override public void onAccessibilityEvent(AccessibilityEvent event) {}
+    @Override public void onInterrupt(){ pararExecucao(); }
+    public static RCBDAccessibilityService getInstancia(){ return instancia; }
+}
+========== ./app/src/main/java/com/rcbd/auto/QueueManager.java ==========
+package com.rcbd.auto;
+
+import android.content.Context;
+import android.content.SharedPreferences;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+public class QueueManager {
+
+    private static final String PREF = "RCBD_QUEUE";
+    private static final String KEY = "pedidos";
+
+    public static void adicionar(Context context, String mb, String numero) {
+        try {
+            SharedPreferences sp = context.getSharedPreferences(PREF, Context.MODE_PRIVATE);
+            String dados = sp.getString(KEY, "[]");
+            JSONArray fila = new JSONArray(dados);
+            JSONObject pedido = new JSONObject();
+            pedido.put("mb", mb);
+            pedido.put("numero", numero);
+            pedido.put("estado", "aguardando");
+            fila.put(pedido);
+            sp.edit().putString(KEY, fila.toString()).apply();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static JSONObject pegarProximo(Context context) {
+        try {
+            SharedPreferences sp = context.getSharedPreferences(PREF, Context.MODE_PRIVATE);
+            JSONArray fila = new JSONArray(sp.getString(KEY, "[]"));
+            if(fila.length() > 0){
+                return fila.getJSONObject(0);
+            }
+        } catch(Exception e){
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static void removerPrimeiro(Context context){
+        try{
+            SharedPreferences sp = context.getSharedPreferences(PREF, Context.MODE_PRIVATE);
+            JSONArray fila = new JSONArray(sp.getString(KEY,"[]"));
+            if(fila.length() > 0){
+                fila.remove(0);
+                sp.edit().putString(KEY, fila.toString()).apply();
+            }
+        }catch(Exception e){ e.printStackTrace(); }
+    }
+
+    public static int quantidade(Context context){
+        try{
+            SharedPreferences sp = context.getSharedPreferences(PREF, Context.MODE_PRIVATE);
+            JSONArray fila = new JSONArray(sp.getString(KEY,"[]"));
+            return fila.length();
+        }catch(Exception e){
+            return 0;
+        }
+    }
+
+public static void limpar(Context context){
+
+    SharedPreferences sp =
+            context.getSharedPreferences(
+                    PREF,
+                    Context.MODE_PRIVATE
+            );
+
+    sp.edit()
+            .putString(KEY, "[]")
+            .apply();
+
+}
+
+}
+========== ./app/src/main/java/com/rcbd/auto/MainActivity.java ==========
+package com.rcbd.auto;
+
+import android.app.Activity;
+import android.os.Bundle;
+import android.os.Build;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
+import android.view.View;
+import android.widget.*;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
+
+
+public class MainActivity extends Activity {
+
+
+    EditText mb;
+    EditText numero;
+
+    Button enviar;
+    Button atualizar;
+    Button diagnostico;
+    Button permissoes;
+
+    TextView status;
+    TextView fila;
+    TextView log;
+    TextView licenca;
+
+    Spinner spinnerApp;
+
+
+    String modoApp = "USSD";
+
+    ArrayList<String> listaPacotes = new ArrayList<>();
+
+
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+
+        super.onCreate(savedInstanceState);
+
+
+
+        // NOVO SISTEMA DE LICENÇA
+
+        if(!LicenseManager.estaAtivado(this)){
+
+
+            Intent i =
+                    new Intent(
+                            this,
+                            ActivationActivity.class
+                    );
+
+
+            startActivity(i);
+
+
+            finish();
+
+
+            return;
+
+        }
+
+
+
+        setContentView(
+                R.layout.activity_main
+        );
+
+
+
+        iniciarPermissoes();
+
+
+
+        startService(
+                new Intent(
+                        this,
+                        WhatsAppNotificationService.class
+                )
+        );
+
+
+
+        ligarComponentes();
+
+
+        iniciarContadorLicenca();
+
+
+        iniciarVerificacaoLicenca();
+
+
+        carregarListaApps();
+
+
+        atualizarEstado();
+
+
+
+
+        enviar.setOnClickListener(v -> {
+
+
+            String pacoteMB =
+                    mb.getText()
+                    .toString()
+                    .trim();
+
+
+
+            String tel =
+                    numero.getText()
+                    .toString()
+                    .trim()
+                    .replace(" ","");
+
+
+
+            if(pacoteMB.isEmpty() || tel.isEmpty()){
+
+
+                Toast.makeText(
+                        this,
+                        "Preencha MB e número",
+                        Toast.LENGTH_SHORT
+                ).show();
+
+
+                return;
+
+            }
+
+
+
+            QueueManager.adicionar(
+                    this,
+                    pacoteMB,
+                    tel
+            );
+
+
+
+            RCBDAccessibilityService.setModo(
+                    modoApp
+            );
+
+
+
+            UssdManager.iniciarEnvio(
+                    this
+            );
+
+
+
+            log.setText(
+                    "Pedido enviado\n\n"
+                    + pacoteMB
+                    + " MB\n"
+                    + tel
+            );
+
+
+
+            mb.setText("");
+            numero.setText("");
+
+        });
+
+
+
+
+        atualizar.setOnClickListener(v ->
+                atualizarEstado()
+        );
+
+
+
+
+        diagnostico.setOnClickListener(v -> {
+
+
+            status.setText(
+                    StatusManager.verificar(this)
+                    +
+                    "\nModo: "
+                    +
+                    modoApp
+            );
+
+
+        });
+
+
+
+
+        permissoes.setOnClickListener(v ->
+
+                PermissionManager.abrirAcessibilidade(this)
+
+        );
+
+
+    }
+
+
+
+
+
+
+    private void ligarComponentes(){
+
+
+        mb=findViewById(R.id.mb);
+
+        numero=findViewById(R.id.numero);
+
+
+        enviar=findViewById(R.id.enviar);
+
+        atualizar=findViewById(R.id.atualizar);
+
+        diagnostico=findViewById(R.id.diagnostico);
+
+        permissoes=findViewById(R.id.permissoes);
+
+
+
+        status=findViewById(R.id.status);
+
+        fila=findViewById(R.id.fila);
+
+        log=findViewById(R.id.log);
+
+        licenca=findViewById(R.id.licenca);
+
+
+        spinnerApp=findViewById(R.id.spinnerApp);
+
+
+    }
+
+
+
+
+
+
+    private void iniciarContadorLicenca(){
+
+
+
+        Timer timer = new Timer();
+
+
+
+        timer.scheduleAtFixedRate(
+
+                new TimerTask(){
+
+
+                    @Override
+                    public void run(){
+
+
+                        runOnUiThread(() -> {
+
+
+                            licenca.setText(
+
+                                    "Validade: "
+                                    +
+                                    LicenseManager.tempoRestante(
+                                            MainActivity.this
+                                    )
+
+                            );
+
+
+                        });
+
+
+                    }
+
+
+                },
+
+                0,
+
+                60000
+
+        );
+
+
+    }
+
+
+
+
+
+
+
+    private void iniciarPermissoes(){
+
+
+        if(Build.VERSION.SDK_INT >= 23){
+
+
+            if(checkSelfPermission(
+                    android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+            )
+            != PackageManager.PERMISSION_GRANTED){
+
+
+
+                requestPermissions(
+
+                        new String[]{
+
+                                android.Manifest.permission.READ_EXTERNAL_STORAGE,
+
+                                android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+
+                        },
+
+                        200
+
+                );
+
+            }
+
+        }
+
+    }
+
+
+
+
+
+
+    private void carregarListaApps(){
+
+
+        ArrayList<String> nomes =
+                new ArrayList<>();
+
+
+        nomes.add("USSD Direto");
+
+
+        listaPacotes.add("USSD");
+
+
+
+        PackageManager pm =
+                getPackageManager();
+
+
+
+        Intent intent =
+                new Intent(
+                        Intent.ACTION_SEND
+                );
+
+
+        intent.setType(
+                "text/plain"
+        );
+
+
+
+        List<ResolveInfo> apps =
+                pm.queryIntentActivities(
+                        intent,
+                        0
+                );
+
+
+
+        for(ResolveInfo info: apps){
+
+
+            String nome =
+                    info.loadLabel(pm)
+                    .toString();
+
+
+
+            String pacote =
+                    info.activityInfo.packageName;
+
+
+
+            if(!listaPacotes.contains(pacote)){
+
+
+                nomes.add(nome);
+
+                listaPacotes.add(pacote);
+
+
+            }
+
+
+        }
+
+
+
+
+        ArrayAdapter<String> adapter =
+                new ArrayAdapter<>(
+
+                        this,
+
+                        android.R.layout.simple_spinner_item,
+
+                        nomes
+
+                );
+
+
+
+        adapter.setDropDownViewResource(
+
+                android.R.layout.simple_spinner_dropdown_item
+
+        );
+
+
+
+        spinnerApp.setAdapter(adapter);
+
+
+
+
+        spinnerApp.setOnItemSelectedListener(
+
+                new AdapterView.OnItemSelectedListener(){
+
+
+
+                    public void onItemSelected(
+
+                            AdapterView<?> p,
+
+                            View v,
+
+                            int pos,
+
+                            long id
+
+                    ){
+
+
+                        modoApp =
+                                listaPacotes.get(pos);
+
+
+                    }
+
+
+
+
+                    public void onNothingSelected(
+
+                            AdapterView<?> p){}
+
+
+
+                }
+
+
+        );
+
+
+    }
+
+
+
+
+
+
+
+    private void atualizarEstado(){
+
+
+
+        status.setText(
+
+                StatusManager.verificar(this)
+
+                +
+
+                "\nModo: "
+
+                +
+
+                modoApp
+
+        );
+
+
+
+        fila.setText(
+
+                "Pedidos: "
+
+                +
+
+                QueueManager.quantidade(this)
+
+        );
+
+
+
+        log.setText(
+
+                "RCBDAuto iniciado"
+
+        );
+
+
+    }
+
+private void iniciarVerificacaoLicenca(){
+
+    Timer timer = new Timer();
+
+    TimerTask tarefa = new TimerTask(){
+
+        @Override
+        public void run(){
+
+            runOnUiThread(() -> {
+
+                if(!LicenseManager.estaAtivado(MainActivity.this)){
+
+                    QueueManager.limpar(MainActivity.this);
+
+                    stopService(
+                            new Intent(
+                                    MainActivity.this,
+                                    WhatsAppNotificationService.class
+                            )
+                    );
+
+                    Toast.makeText(
+                            MainActivity.this,
+                            "Licença expirada",
+                            Toast.LENGTH_LONG
+                    ).show();
+
+
+                    // Cancela a verificação
+                   this.cancel();
+
+
+                    Intent i = new Intent(
+                            MainActivity.this,
+                            ActivationActivity.class
+                    );
+
+                    i.setFlags(
+                            Intent.FLAG_ACTIVITY_NEW_TASK
+                            |
+                            Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    );
+
+                    startActivity(i);
+
+                    finish();
+
+                }
+
+            });
+
+        }
+
+    };
+
+
+    timer.scheduleAtFixedRate(
+            tarefa,
+            60000,
+            60000
+    );
+
+}
+
+}
+========== ./app/src/main/java/com/rcbd/auto/RCBDNotificationListener.java ==========
+package com.rcbd.auto;
+
+import android.service.notification.NotificationListenerService;
+import android.service.notification.StatusBarNotification;
+import android.content.Context;
+
+public class RCBDNotificationListener extends NotificationListenerService {
+
+    @Override
+    public void onNotificationPosted(StatusBarNotification sbn) {
+        String pacote = sbn.getPackageName();
+
+        // Só lê WhatsApp e WhatsApp Business
+        if(pacote.equals("com.whatsapp") || pacote.equals("com.whatsapp.w4b")){
+            String titulo = sbn.getNotification().extras.getString("android.title");
+            String texto = sbn.getNotification().extras.getString("android.text");
+
+            if(texto!= null && texto.toLowerCase().startsWith(".mandar")){
+                LogManager.registar(this, "Msg recebida: " + texto);
+                WhatsAppNotificationService.processarMensagem(this, texto);
+            }
+        }
+    }
+}
+
+========== ./app/src/main/java/com/rcbd/auto/LicenseManager.java ==========
+package com.rcbd.auto;
+
+import android.content.Context;
+import android.provider.Settings;
+
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+
+
+public class LicenseManager {
+
+
+    // ALTERAR ANTES DE COMPILAR PARA CADA CLIENTE
+
+    private static final String ID_LICENCA =
+            "31DB0767";
+
+    private static final int DIAS_PLANO =
+            3;
+
+    private static final String CODIGO =
+            "AB92";
+
+
+
+    public static boolean estaAtivado(Context context){
+
+
+        if(!LicenseStorage.existe()){
+            return false;
+        }
+
+
+        try{
+
+
+            String dados =
+                    LicenseStorage.ler();
+
+
+            String idAndroid =
+                    Settings.Secure.getString(
+                            context.getContentResolver(),
+                            Settings.Secure.ANDROID_ID
+                    );
+
+
+
+            String idGuardado =
+                    pegar(dados,"ID_ANDROID");
+
+            long dataFinal =
+                    Long.parseLong(
+                            pegar(dados,"DATA_FINAL")
+                    );
+
+
+
+            // Verifica se é o mesmo aparelho
+
+            if(!idAndroid.equals(idGuardado)){
+                return false;
+            }
+
+
+
+            // Verifica validade
+
+            if(System.currentTimeMillis() >= dataFinal){
+
+                return false;
+
+            }
+
+
+
+            return true;
+
+
+
+        }catch(Exception e){
+
+            return false;
+
+        }
+
+    }
+
+
+
+    public static boolean ativar(
+        Context context,
+        String chave
+){
+
+    try{
+
+        // VERIFICA SE JÁ EXISTE UMA LICENÇA
+
+        if (LicenseStorage.existe()) {
+
+            try {
+
+                String dados = LicenseStorage.ler();
+
+                if(dados != null){
+
+                    String chaveSalva =
+                            pegar(dados, "CHAVE");
+
+                    if(chave.equalsIgnoreCase(chaveSalva)){
+                        return false;
+                    }
+
+                }
+
+            } catch (Exception e) {
+
+                e.printStackTrace();
+
+            }
+
+        }
+
+
+        String[] partes =
+                chave.split("-");
+
+
+        if(partes.length != 4){
+            return false;
+        }
+
+
+        if(!partes[0].equals("RCBD")){
+            return false;
+        }
+
+
+        String id =
+                partes[1];
+
+
+        String dias =
+                partes[2].replace("D","");
+
+
+        String codigo =
+                partes[3];
+
+
+
+        String idAndroid =
+                Settings.Secure.getString(
+                        context.getContentResolver(),
+                        Settings.Secure.ANDROID_ID
+                );
+
+
+        String idGerado =
+                gerarIdLicenca(idAndroid);
+
+
+
+        // Verifica ID da chave com ID do APK
+
+        if(!id.equals(ID_LICENCA)){
+            return false;
+        }
+
+
+
+        // Verifica ID do aparelho
+
+        if(!idGerado.equals(ID_LICENCA)){
+            return false;
+        }
+
+
+
+        if(!dias.equals(
+                String.valueOf(DIAS_PLANO)
+        )){
+            return false;
+        }
+
+
+
+        if(!codigo.equals(CODIGO)){
+            return false;
+        }
+
+
+
+        long inicio =
+                System.currentTimeMillis();
+
+
+
+        long finalizacao =
+                inicio +
+                (10 * 60 * 1000L);
+
+
+
+        String dados =
+
+                "CHAVE="+chave+"\n"+
+                "ID_ANDROID="+idAndroid+"\n"+
+                "DATA_INICIO="+inicio+"\n"+
+                "DATA_FINAL="+finalizacao;
+
+
+
+        LicenseStorage.salvar(dados);
+
+
+
+        return true;
+
+
+
+    }catch(Exception e){
+
+        return false;
+
+    }
+
+}
+
+
+
+
+    public static String tempoRestante(Context context){
+
+
+        try{
+
+
+            String dados =
+                    LicenseStorage.ler();
+
+
+            long fim =
+                    Long.parseLong(
+                            pegar(dados,"DATA_FINAL")
+                    );
+
+
+
+            long restante =
+                    fim -
+                    System.currentTimeMillis();
+
+
+
+            if(restante <= 0){
+
+                return "EXPIRADO";
+
+            }
+
+
+
+            long dias =
+                    restante / 86400000;
+
+
+            long horas =
+                    (restante % 86400000) / 3600000;
+
+
+            long minutos =
+                    (restante % 3600000) / 60000;
+
+
+
+            return dias+" dias "
+                    +horas+" horas "
+                    +minutos+" minutos";
+
+
+
+        }catch(Exception e){
+
+            return "ERRO";
+
+        }
+
+
+    }
+
+
+
+
+    private static String pegar(
+            String texto,
+            String chave
+    ){
+
+
+        for(String linha :
+                texto.split("\n")){
+
+
+            if(linha.startsWith(chave)){
+
+                return linha
+                        .replace(chave+"=","");
+
+            }
+
+        }
+
+
+        return "";
+
+    }
+
+private static String gerarIdLicenca(String androidId) {
+
+    if(androidId == null || androidId.length() < 8){
+        return "";
+    }
+
+    return androidId
+            .substring(0, 8)
+            .toUpperCase(Locale.ROOT);
+}
+
+
+}
+========== ./app/src/main/java/com/rcbd/auto/WhatsAppNotificationService.java ==========
+package com.rcbd.auto;
+
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.Service;
+import android.content.Context;
+import android.content.Intent;
+import android.os.Build;
+import android.os.IBinder;
+
+public class WhatsAppNotificationService extends Service {
+
+    private static final String CHANNEL_ID = "RCBDAutoService";
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        criarCanal();
+
+        Notification notification;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            notification = new Notification.Builder(this, CHANNEL_ID)
+                .setContentTitle("RCBDAuto Rodando")
+                .setContentText("Monitorando.mandar")
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .build();
+        } else {
+            notification = new Notification.Builder(this)
+                .setContentTitle("RCBDAuto Rodando")
+                .setContentText("Monitorando.mandar")
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .build();
+        }
+
+        startForeground(1, notification);
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        return START_STICKY;
+    }
+
+    // CHAMADO PELO RCBDNotificationListener
+    public static void processarMensagem(Context context, String mensagem) {
+        String[] dados = MessageParser.analisarMandar(mensagem);
+        boolean sucesso = dados!= null && dados.length == 2; // CORRIGIDO
+
+        if(sucesso){
+            String mb = dados[0]; // CORRIGIDO
+            String numero = dados[1]; // CORRIGIDO
+            QueueManager.adicionar(context, mb, numero);
+            LogManager.registar(context, "Comando WhatsApp: " + mb + "MB para " + numero);
+            RCBDAccessibilityService.setModo("USSD"); // Força USSD
+            UssdManager.iniciarEnvio(context);
+        } else {
+            LogManager.registar(context, "Comando invalido: " + mensagem);
+        }
+    }
+
+    private void criarCanal() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel serviceChannel = new NotificationChannel(
+                    CHANNEL_ID,
+                    "RCBDAuto Service Channel",
+                    NotificationManager.IMPORTANCE_LOW
+            );
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            manager.createNotificationChannel(serviceChannel);
+        }
+    }
+
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
+    }
+}
+
+========== ./app/src/main/java/com/rcbd/auto/LicenseStorage.java ==========
+package com.rcbd.auto;
+
+import android.os.Environment;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.FileInputStream;
+
+public class LicenseStorage {
+
+
+    private static File getArquivo(){
+
+    File arquivo = new File(
+            Environment.getExternalStorageDirectory(),
+            "Android/license.sys"
+    );
+
+
+    File pasta = arquivo.getParentFile();
+
+
+    if(pasta != null && !pasta.exists()){
+        pasta.mkdirs();
+    }
+
+
+    return arquivo;
+
+}
+
+
+    public static boolean existe(){
+
+        return getArquivo().exists();
+
+    }
+
+
+
+    public static void salvar(String dados){
+
+        try{
+
+            FileWriter fw =
+                    new FileWriter(
+                            getArquivo(),
+                            false
+                    );
+
+            fw.write(dados);
+
+            fw.close();
+
+
+        }catch(Exception e){
+
+            e.printStackTrace();
+
+        }
+
+    }
+
+
+
+    public static String ler(){
+
+        try{
+
+            File f = getArquivo();
+
+            FileInputStream fis =
+                    new FileInputStream(f);
+
+
+            byte[] dados =
+                    new byte[(int)f.length()];
+
+
+            fis.read(dados);
+
+            fis.close();
+
+
+            return new String(dados);
+
+
+        }catch(Exception e){
+
+            return null;
+
+        }
+
+    }
+
+}

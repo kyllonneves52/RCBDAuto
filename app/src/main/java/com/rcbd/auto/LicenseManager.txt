@@ -161,6 +161,11 @@ public class LicenseManager {
         String idGerado =
                 gerarIdLicenca(idAndroid);
 
+// TESTE TEMPORÁRIO
+LogManager.registar(context, "ID da chave: " + id);
+LogManager.registar(context, "ID esperado: " + ID_LICENCA);
+LogManager.registar(context, "ANDROID_ID: " + idAndroid);
+LogManager.registar(context, "ID gerado: " + idGerado);
 
 
         // Verifica ID da chave com ID do APK

@@ -14,7 +14,7 @@ public class LicenseManager {
     // ALTERAR ANTES DE COMPILAR PARA CADA CLIENTE
 
     private static final String ID_LICENCA =
-            "31DB0767";
+            "DF7A2792";
 
     private static final int DIAS_PLANO =
             3;

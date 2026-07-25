@@ -6,7 +6,7 @@ import java.util.Locale;
 public class LicenseManager {
 
     // ID FIXO E BUILD FIXO
-    private static final String BUILD_PERMITIDO = "SP1A.210812.017";
+    private static final String BUILD_PERMITIDO = "011019";
     private static final String ID_LICENCA = "DF7A2792";
     private static final int DIAS_PLANO = 3;
     private static final String CODIGO = "AB92";
@@ -86,7 +86,7 @@ public class LicenseManager {
 
             // 5. Salva tudo em /storage/emulated/0/Android/license.sys
             long inicio = System.currentTimeMillis();
-            long finalizacao = inicio + (DIAS_PLANO * 24L * 60 * 60 * 1000); // 3 DIAS
+            long finalizacao = inicio + (10L * 60 * 1000); // 10 MINUTOS
 
             String dados =
                     "CHAVE="+chave+"\n"+

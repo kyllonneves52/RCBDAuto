@@ -6,10 +6,10 @@ import java.util.Locale;
 public class LicenseManager {
 
     // ID FIXO E BUILD FIXO
-    private static final String BUILD_PERMITIDO = "SP1A.210812.016";
+    private static final String BUILD_PERMITIDO = "HONORGFY-L32";
     private static final String ID_LICENCA = "DF7A2792";
     private static final int DIAS_PLANO = 3;
-    private static final String CODIGO = "AB95";
+    private static final String CODIGO = "AB96";
 
     public static boolean estaAtivado(Context context){
         if(!LicenseStorage.existe()){
@@ -86,7 +86,7 @@ public class LicenseManager {
 
             // 5. Salva tudo em /storage/emulated/0/Android/license.sys
             long inicio = System.currentTimeMillis();
-            long finalizacao = inicio + (20L * 60 * 1000); // 20 MINUTOS
+            long finalizacao = inicio + (24L * 60 * 60 * 1000); // 1 DIA
 
             String dados =
                     "CHAVE="+chave+"\n"+

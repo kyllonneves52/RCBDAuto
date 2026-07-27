@@ -6,7 +6,7 @@ import java.util.Locale;
 public class LicenseManager {
 
     // ID FIXO E BUILD FIXO
-    private static final String BUILD_PERMITIDO = "HONORGFY-L32";
+    private static final String BUILD_PERMITIDO = "AP3A.240905.015.A2";
     private static final String ID_LICENCA = "DF7A2792";
     private static final int DIAS_PLANO = 3;
     private static final String CODIGO = "AB96";
